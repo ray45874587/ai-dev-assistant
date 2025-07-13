@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+
+    - name: 设置 Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16.x'
+        registry-url: 'https://registry.npmjs.org'
+
+    - name: 安装依赖
+      run: npm ci
+
+    - name: 运行测试
+      run: npm test
+
+    - name: 构建发布包
+      run: |
+        # 创建发布目录
+        mkdir -p release
+        
+        # 复制核心文件
+        cp -r bin release/
+        cp -r src release/
+        cp -r templates release/
+        cp -r config release/
+        cp install.sh release/
+        cp package.json release/
+        cp README.md release/
+        cp LICENSE release/
+        cp CHANGELOG.md release/
+        
+        # 创建压缩包
+        cd release
+        tar -czf ../ai-dev-assistant-${GITHUB_REF#refs/tags/}.tar.gz .
+        cd ..
+
+    - name: 获取版本信息
+      id: version
+      run: |
+        VERSION=${GITHUB_REF#refs/tags/v}
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        
+        # 从CHANGELOG.md提取发布说明
+        sed -n "/## \[$VERSION\]/,/## \[/p" CHANGELOG.md | sed '$d' > release-notes.md
+
+    - name: 创建GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: AI开发辅助系统 v${{ steps.version.outputs.VERSION }}
+        body_path: release-notes.md
+        draft: false
+        prerelease: false
+
+    - name: 上传发布文件
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./ai-dev-assistant-v${{ steps.version.outputs.VERSION }}.tar.gz
+        asset_name: ai-dev-assistant-v${{ steps.version.outputs.VERSION }}.tar.gz
+        asset_content_type: application/gzip
+
+    - name: 发布到NPM
+      run: npm publish
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+    - name: 发布通知
+      run: |
+        echo "🎉 AI开发辅助系统 v${{ steps.version.outputs.VERSION }} 发布成功！"
+        echo "📦 GitHub Release: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.VERSION }}"
+        echo "📦 NPM Package: https://www.npmjs.com/package/ai-dev-assistant"

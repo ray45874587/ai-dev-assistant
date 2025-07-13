@@ -1,0 +1,51 @@
+{
+  "version": "1.0.0",
+  "name": "AI开发辅助系统规则集",
+  "description": "基于第一性原理的AI协同开发规则，确保高效、安全、可维护的代码",
+  "projectType": "node",
+  "language": "zh-cn",
+  
+  "corePhilosophy": {
+    "firstPrinciples": "所有决策基于第一性原理：简单性、可维护性、性能、安全性",
+    "aiCollaboration": "AI助手应理解项目上下文，提供精准建议",
+    "preventionFirst": "事前预防优于事后修复"
+  },
+
+  "rules": {
+    "codeQuality": {
+      "description": "代码质量保障规则",
+      "checks": [
+        { "id": "naming-convention", "description": "使用清晰、一致的命名规范", "severity": "error" },
+        { "id": "function-complexity", "description": "单个函数复杂度不超过10", "severity": "warning" },
+        { "id": "file-size", "description": "单个文件不超过500行", "severity": "warning" },
+        { "id": "error-handling", "description": "必须有适当的错误处理", "severity": "error" }
+      ]
+    },
+    
+    "security": {
+      "description": "安全性规则",
+      "checks": [
+        { "id": "input-validation", "description": "所有用户输入必须验证", "severity": "error" },
+        { "id": "sql-injection", "description": "使用参数化查询防止SQL注入", "severity": "error" },
+        { "id": "xss-prevention", "description": "输出转义防止XSS攻击", "severity": "error" },
+        { "id": "sensitive-data", "description": "敏感数据不得硬编码", "severity": "error" }
+      ]
+    },
+    
+    "performance": {
+      "description": "性能优化规则", 
+      "checks": [
+        { "id": "async-operations", "description": "I/O操作必须异步处理", "severity": "warning" },
+        { "id": "memory-leaks", "description": "避免内存泄漏", "severity": "error" },
+        { "id": "unnecessary-loops", "description": "避免不必要的循环嵌套", "severity": "warning" }
+      ]
+    }
+  },
+
+  "aiInstructions": {
+    "general": "理解项目架构和业务逻辑，提供符合项目风格的代码建议",
+    "codeReview": "重点关注安全性、性能和可维护性",
+    "documentation": "生成清晰、准确的中文文档",
+    "testing": "建议全面的测试用例，包括边界条件"
+  }
+}

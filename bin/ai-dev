@@ -1,0 +1,475 @@
+#!/usr/bin/env node
+
+/**
+ * AI开发辅助系统 - 命令行界面
+ * AI Development Assistant - Command Line Interface
+ * Version: 1.0.0
+ */
+
+const fs = require('fs');
+const path = require('path');
+const AIDevAssistant = require('../src/ai-dev-assistant');
+
+// 颜色定义
+const colors = {
+    reset: '\033[0m',
+    red: '\033[31m',
+    green: '\033[32m',
+    yellow: '\033[33m',
+    blue: '\033[34m',
+    magenta: '\033[35m',
+    cyan: '\033[36m',
+    white: '\033[37m'
+};
+
+class AIDevCLI {
+    constructor() {
+        this.assistant = new AIDevAssistant();
+        this.commands = {
+            'init': this.initCommand.bind(this),
+            'status': this.statusCommand.bind(this),
+            'update': this.updateCommand.bind(this),
+            'analyze': this.analyzeCommand.bind(this),
+            'docs': this.docsCommand.bind(this),
+            'focus': this.focusCommand.bind(this),
+            'audit': this.auditCommand.bind(this),
+            'clean': this.cleanCommand.bind(this),
+            'help': this.helpCommand.bind(this),
+            '--version': this.versionCommand.bind(this),
+            '-v': this.versionCommand.bind(this)
+        };
+    }
+
+    /**
+     * 打印带颜色的消息
+     */
+    print(message, color = 'white') {
+        console.log(`${colors[color]}${message}${colors.reset}`);
+    }
+
+    /**
+     * 打印成功消息
+     */
+    success(message) {
+        this.print(`✅ ${message}`, 'green');
+    }
+
+    /**
+     * 打印错误消息
+     */
+    error(message) {
+        this.print(`❌ ${message}`, 'red');
+    }
+
+    /**
+     * 打印警告消息
+     */
+    warning(message) {
+        this.print(`⚠️ ${message}`, 'yellow');
+    }
+
+    /**
+     * 打印信息消息
+     */
+    info(message) {
+        this.print(`ℹ️ ${message}`, 'blue');
+    }
+
+    /**
+     * 打印标题
+     */
+    printHeader() {
+        console.log('');
+        this.print('════════════════════════════════════════════════════════', 'cyan');
+        this.print('    🤖 AI开发辅助系统 (AI Development Assistant)', 'cyan');
+        this.print('    Version: 1.0.0', 'cyan');
+        this.print('════════════════════════════════════════════════════════', 'cyan');
+        console.log('');
+    }
+
+    /**
+     * 运行CLI
+     */
+    async run() {
+        const args = process.argv.slice(2);
+        const command = args[0];
+        const params = args.slice(1);
+
+        if (!command || command === 'help') {
+            this.printHeader();
+            this.helpCommand();
+            return;
+        }
+
+        if (this.commands[command]) {
+            try {
+                await this.commands[command](params);
+            } catch (error) {
+                this.error(`命令执行失败: ${error.message}`);
+                process.exit(1);
+            }
+        } else {
+            this.error(`未知命令: ${command}`);
+            this.info('使用 "ai-dev help" 查看可用命令');
+            process.exit(1);
+        }
+    }
+
+    /**
+     * 初始化命令
+     */
+    async initCommand(params) {
+        this.printHeader();
+        this.info('初始化AI开发辅助系统...');
+        
+        try {
+            const result = await this.assistant.initialize();
+            
+            if (result.success) {
+                this.success('系统初始化完成！');
+                console.log('');
+                this.info('生成的文件:');
+                console.log('  📁 .ai-dev-assistant/          # 系统目录');
+                console.log('  📝 .ai-dev-assistant-rules.json # AI规则配置');
+                console.log('  📖 .ai-instructions.md        # AI指令文档');
+                console.log('');
+                this.info('项目信息:');
+                console.log(`  名称: ${result.config.name}`);
+                console.log(`  类型: ${result.config.type}`);
+                console.log(`  语言: ${result.config.language}`);
+                console.log('');
+                this.info('下一步:');
+                console.log('  ai-dev status     # 查看系统状态');
+                console.log('  ai-dev analyze    # 分析代码质量');
+                console.log('  ai-dev docs       # 生成文档');
+            }
+        } catch (error) {
+            this.error(`初始化失败: ${error.message}`);
+            process.exit(1);
+        }
+    }
+
+    /**
+     * 状态命令
+     */
+    async statusCommand(params) {
+        try {
+            const status = this.assistant.getStatus();
+            
+            console.log('');
+            this.print('🤖 AI开发辅助系统状态', 'cyan');
+            console.log('');
+            
+            // 项目信息
+            this.print('📊 项目信息:', 'blue');
+            console.log(`  名称: ${status.project.name}`);
+            console.log(`  类型: ${status.project.type}`);
+            console.log(`  语言: ${status.project.language}`);
+            console.log('');
+            
+            // 系统状态
+            this.print('⚙️ 系统状态:', 'blue');
+            const healthColor = status.health === 'healthy' ? 'green' : 'yellow';
+            this.print(`  健康状态: ${status.health}`, healthColor);
+            
+            const checkMark = (condition) => condition ? '✅' : '❌';
+            console.log(`  ${checkMark(status.system.initialized)} 系统已初始化`);
+            console.log(`  ${checkMark(status.system.configExists)} 配置文件`);
+            console.log(`  ${checkMark(status.system.rulesExists)} AI规则`);
+            console.log(`  ${checkMark(status.system.contextExists)} 上下文数据`);
+            console.log('');
+            
+            // 功能状态
+            this.print('🔧 功能状态:', 'blue');
+            Object.entries(status.features).forEach(([feature, enabled]) => {
+                const status = enabled ? '✅ 启用' : '❌ 禁用';
+                console.log(`  ${feature}: ${status}`);
+            });
+            
+            // 问题报告
+            if (status.issues && status.issues.length > 0) {
+                console.log('');
+                this.print('⚠️ 发现的问题:', 'yellow');
+                status.issues.forEach(issue => {
+                    console.log(`  - ${issue}`);
+                });
+            }
+            
+            console.log('');
+            
+        } catch (error) {
+            this.error(`获取状态失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 更新命令
+     */
+    async updateCommand(params) {
+        this.info('更新项目上下文...');
+        
+        try {
+            const result = await this.assistant.update();
+            
+            if (result.success) {
+                this.success('上下文更新完成！');
+                
+                if (result.changes && result.changes.length > 0) {
+                    console.log('');
+                    this.info('检测到的变化:');
+                    result.changes.forEach(change => {
+                        console.log(`  - ${change.type}: ${change.message}`);
+                    });
+                }
+            }
+        } catch (error) {
+            this.error(`更新失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 分析命令
+     */
+    async analyzeCommand(params) {
+        const filePath = params[0];
+        
+        if (filePath) {
+            this.info(`分析文件: ${filePath}`);
+        } else {
+            this.info('分析整个项目...');
+        }
+        
+        try {
+            const result = await this.assistant.analyzeCode(filePath);
+            
+            if (filePath) {
+                // 单文件分析结果
+                console.log('');
+                this.print(`📄 文件分析结果: ${result.file}`, 'cyan');
+                console.log('');
+                
+                this.print('📊 文件指标:', 'blue');
+                console.log(`  行数: ${result.metrics.lines}`);
+                console.log(`  大小: ${result.metrics.size} 字节`);
+                console.log(`  复杂度: ${result.metrics.complexity}`);
+                console.log('');
+                
+                if (result.violations.length > 0) {
+                    this.print('⚠️ 规则违反:', 'yellow');
+                    result.violations.forEach(violation => {
+                        const severityEmoji = violation.severity === 'error' ? '🚫' : '⚠️';
+                        console.log(`  ${severityEmoji} ${violation.description}`);
+                    });
+                    console.log('');
+                }
+                
+                if (result.suggestions.length > 0) {
+                    this.print('💡 改进建议:', 'green');
+                    result.suggestions.forEach(suggestion => {
+                        console.log(`  - ${suggestion.message}`);
+                        if (suggestion.suggestion) {
+                            console.log(`    建议: ${suggestion.suggestion}`);
+                        }
+                    });
+                }
+            } else {
+                // 项目分析结果
+                console.log('');
+                this.print('📊 项目分析完成', 'cyan');
+                console.log('');
+                
+                this.print('📈 代码指标:', 'blue');
+                console.log(`  总文件数: ${result.codeMetrics.totalFiles}`);
+                console.log(`  代码行数: ${result.codeMetrics.totalLines}`);
+                console.log(`  复杂度: ${result.codeMetrics.complexity}`);
+                console.log('');
+                
+                this.print('🎯 质量评分:', 'blue');
+                const scoreColor = result.quality.score >= 80 ? 'green' : 
+                                 result.quality.score >= 60 ? 'yellow' : 'red';
+                this.print(`  ${result.quality.score}/100`, scoreColor);
+                
+                if (result.quality.issues.length > 0) {
+                    console.log('');
+                    this.print('⚠️ 发现的问题:', 'yellow');
+                    result.quality.issues.forEach(issue => {
+                        console.log(`  - ${issue}`);
+                    });
+                }
+                
+                console.log('');
+                this.info('详细报告已保存到: .ai-dev-assistant/context/analysis-report.md');
+            }
+            
+        } catch (error) {
+            this.error(`分析失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 文档命令
+     */
+    async docsCommand(params) {
+        this.info('生成项目文档...');
+        
+        try {
+            const result = await this.assistant.generateDocs();
+            
+            if (result.success) {
+                this.success('文档生成完成！');
+                console.log('');
+                this.info('生成的文档:');
+                result.files.forEach(file => {
+                    console.log(`  📄 ${file}`);
+                });
+            }
+        } catch (error) {
+            this.error(`文档生成失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 焦点命令
+     */
+    async focusCommand(params) {
+        const area = params[0];
+        
+        if (!area) {
+            this.error('请指定开发焦点');
+            this.info('可用焦点: performance, security, testing, refactoring, documentation');
+            return;
+        }
+        
+        try {
+            const result = await this.assistant.setFocus(area);
+            
+            if (result.success) {
+                this.success(`开发焦点已设置为: ${area}`);
+                console.log('');
+                this.info('当前优先级:');
+                result.config.priorities.forEach((priority, index) => {
+                    console.log(`  ${index + 1}. ${priority}`);
+                });
+            }
+        } catch (error) {
+            this.error(`设置焦点失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 审计命令
+     */
+    async auditCommand(params) {
+        this.info('执行安全审计...');
+        
+        try {
+            const result = await this.assistant.securityAudit();
+            
+            if (result.success) {
+                this.success('安全审计完成！');
+                console.log('');
+                
+                if (result.issues.length > 0) {
+                    this.print('🚨 发现的安全问题:', 'red');
+                    result.issues.forEach(issue => {
+                        const severityEmoji = issue.severity === 'high' ? '🚨' : '⚠️';
+                        console.log(`  ${severityEmoji} ${issue.message}`);
+                    });
+                } else {
+                    this.success('未发现严重安全问题');
+                }
+                
+                if (result.recommendations.length > 0) {
+                    console.log('');
+                    this.print('🔧 安全建议:', 'blue');
+                    result.recommendations.forEach(rec => {
+                        console.log(`  - ${rec}`);
+                    });
+                }
+                
+                console.log('');
+                this.info(`详细报告: ${result.reportPath}`);
+            }
+        } catch (error) {
+            this.error(`安全审计失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 清理命令
+     */
+    async cleanCommand(params) {
+        this.warning('这将删除所有AI开发辅助系统文件');
+        
+        // 简单确认（在实际项目中可能需要更好的确认机制）
+        try {
+            const result = await this.assistant.cleanup();
+            
+            if (result.success) {
+                this.success('系统清理完成');
+            }
+        } catch (error) {
+            this.error(`清理失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 版本命令
+     */
+    versionCommand(params) {
+        console.log('1.0.0');
+    }
+
+    /**
+     * 帮助命令
+     */
+    helpCommand(params) {
+        console.log('');
+        this.print('🤖 AI开发辅助系统 - 命令行工具', 'cyan');
+        console.log('');
+        this.print('使用方法:', 'blue');
+        console.log('  ai-dev <command> [options]');
+        console.log('');
+        this.print('命令:', 'blue');
+        console.log('  init          初始化AI开发辅助系统');
+        console.log('  status        查看系统状态');
+        console.log('  update        更新项目上下文');
+        console.log('  analyze [file] 分析代码质量（可指定文件）');
+        console.log('  docs          生成项目文档');
+        console.log('  focus <area>  设置开发焦点');
+        console.log('  audit         执行安全审计');
+        console.log('  clean         清理系统文件');
+        console.log('  help          显示帮助信息');
+        console.log('  --version/-v  显示版本号');
+        console.log('');
+        this.print('开发焦点选项:', 'blue');
+        console.log('  performance   性能优化');
+        console.log('  security      安全加固');
+        console.log('  testing       测试覆盖');
+        console.log('  refactoring   代码重构');
+        console.log('  documentation 文档完善');
+        console.log('');
+        this.print('示例:', 'blue');
+        console.log('  ai-dev init                    # 初始化系统');
+        console.log('  ai-dev status                  # 查看状态');
+        console.log('  ai-dev analyze src/index.js    # 分析特定文件');
+        console.log('  ai-dev focus performance       # 设置性能焦点');
+        console.log('  ai-dev audit                   # 安全审计');
+        console.log('');
+        this.print('更多信息:', 'blue');
+        console.log('  GitHub: https://github.com/your-repo/ai-dev-assistant');
+        console.log('  文档: .ai-instructions.md');
+        console.log('');
+    }
+}
+
+// 运行CLI
+if (require.main === module) {
+    const cli = new AIDevCLI();
+    cli.run().catch(error => {
+        console.error('CLI执行失败:', error.message);
+        process.exit(1);
+    });
+}
+
+module.exports = AIDevCLI;

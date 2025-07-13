@@ -1,0 +1,59 @@
+{
+  "name": "ai-dev-assistant",
+  "version": "1.0.0",
+  "description": "AI开发辅助系统 - 基于第一性原理的智能开发助手",
+  "main": "src/ai-dev-assistant.js",
+  "bin": {
+    "ai-dev": "./bin/ai-dev"
+  },
+  "scripts": {
+    "test": "jest",
+    "start": "node bin/ai-dev",
+    "install-global": "npm install -g .",
+    "uninstall-global": "npm uninstall -g ai-dev-assistant"
+  },
+  "keywords": [
+    "ai",
+    "development",
+    "assistant",
+    "copilot",
+    "automation",
+    "code-analysis",
+    "project-management",
+    "developer-tools"
+  ],
+  "author": "AI Development Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-repo/ai-dev-assistant.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-repo/ai-dev-assistant/issues"
+  },
+  "homepage": "https://github.com/your-repo/ai-dev-assistant#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "src/",
+    "bin/",
+    "install.sh",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "^29.0.0"
+  },
+  "preferGlobal": true,
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}

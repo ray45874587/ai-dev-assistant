@@ -1,0 +1,106 @@
+# AI开发辅助系统项目文件
+.ai-dev-assistant/
+.ai-dev-assistant-rules.json
+.ai-dev-instructions.md
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 环境变量
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 日志文件
+logs/
+*.log
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.temp
+
+# 缓存文件
+.cache/
+.eslintcache
+
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 测试覆盖率
+coverage/
+.nyc_output/
+
+# 构建输出
+dist/
+build/
+out/
+
+# 运行时文件
+*.pid
+*.seed
+*.pid.lock
+
+# 依赖目录
+jspm_packages/
+
+# 可选的npm缓存目录
+.npm
+
+# 可选的ESLint缓存
+.eslintcache
+
+# Microbundle缓存
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# 可选的REPL历史
+.node_repl_history
+
+# yarn的完整性文件
+.yarn-integrity
+
+# parcel缓存
+.parcel-cache/
+
+# next.js构建输出
+.next/
+
+# nuxt.js构建输出
+.nuxt/
+
+# vuepress构建输出
+.vuepress/dist/
+
+# Serverless目录
+.serverless/
+
+# FuseBox缓存
+.fusebox/
+
+# DynamoDB Local文件
+.dynamodb/
+
+# TernJS端口文件
+.tern-port

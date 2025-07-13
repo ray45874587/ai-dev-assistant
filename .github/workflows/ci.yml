@@ -1,0 +1,121 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+
+    - name: 设置 Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: 安装依赖
+      run: npm ci
+
+    - name: 运行代码检查
+      run: npm run lint
+
+    - name: 运行测试
+      run: npm test
+
+    - name: 运行集成测试
+      run: |
+        mkdir test-project
+        cd test-project
+        npm init -y
+        ../install.sh
+        ../bin/ai-dev init
+        ../bin/ai-dev status
+        ../bin/ai-dev analyze
+        cd ..
+        rm -rf test-project
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+
+    - name: 运行安全审计
+      run: npm audit
+
+    - name: 检查依赖漏洞
+      run: npm audit --audit-level moderate
+
+  compatibility:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+
+    - name: 设置 Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16.x'
+
+    - name: 测试安装脚本 (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        mkdir test-install
+        cd test-install
+        ../install.sh
+        ../bin/ai-dev --version
+
+    - name: 测试安装脚本 (Windows)
+      if: runner.os == 'Windows'
+      shell: bash
+      run: |
+        mkdir test-install
+        cd test-install
+        bash ../install.sh
+        bash ../bin/ai-dev --version
+
+  documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v3
+
+    - name: 检查文档链接
+      run: |
+        # 检查README中的链接是否有效
+        if ! grep -q "INSTALL_GUIDE.md" README.md; then
+          echo "README.md缺少安装指南链接"
+          exit 1
+        fi
+        
+        if ! grep -q "CONTRIBUTING.md" README.md; then
+          echo "README.md缺少贡献指南链接"
+          exit 1
+        fi
+
+    - name: 验证版本一致性
+      run: |
+        # 检查package.json和README中的版本是否一致
+        PACKAGE_VERSION=$(node -p "require('./package.json').version")
+        if ! grep -q "$PACKAGE_VERSION" README.md; then
+          echo "版本号不一致：package.json($PACKAGE_VERSION) 与 README.md"
+          exit 1
+        fi
