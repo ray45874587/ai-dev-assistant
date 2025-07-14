@@ -1,4 +1,5 @@
 # 🤖 AI开发辅助系统
+<img width="680" height="285" alt="image" src="https://github.com/user-attachments/assets/9d9fa0cd-10a7-42e7-b0c1-06a5ed3c5b7c" />
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](package.json)
@@ -251,10 +252,10 @@ module.exports = {
 
 ## 📚 更多资源
 
-- 📖 [完整文档](https://ai-dev-assistant.docs)
+- 📖 [完整文档](https://github.com/ray45874587/ai-dev-assistant/ai-dev-assistant.docs)
 - 🎥 [视频教程](https://youtube.com/ai-dev-assistant)
-- 💬 [社区讨论](https://github.com/your-repo/ai-dev-assistant/discussions)
-- 🐛 [问题反馈](https://github.com/your-repo/ai-dev-assistant/issues)
+- 💬 [社区讨论](https://github.com/ray45874587/ai-dev-assistant/discussions)
+- 🐛 [问题反馈](https://github.com/ray45874587/ai-dev-assistant/issues)
 
 ## 🤝 贡献指南
 
