@@ -141,7 +141,7 @@ class AIDevCLI {
                 // 基本信息
                 this.print('📋 文件信息:', 'blue');
                 console.log(`  文件名: ${result.fileInfo.name}`);
-                console.log(`  文件类型: ${result.fileType}`);
+                console.log(`  文件类型: ${result.intelligentType?.primaryType || '未知'}`);
                 console.log(`  文件大小: ${(result.fileInfo.size / 1024).toFixed(2)} KB`);
                 console.log(`  代码行数: ${result.fileInfo.lines}`);
                 console.log(`  最后修改: ${result.fileInfo.lastModified.toLocaleDateString()}`);
@@ -150,16 +150,16 @@ class AIDevCLI {
                 console.log('');
                 this.print('📊 质量分析:', 'blue');
                 console.log(`  质量评分: ${result.quality.score}/100 (${result.quality.level})`);
-                console.log(`  代码行数: ${result.quality.metrics.codeLines}`);
-                console.log(`  注释行数: ${result.quality.metrics.commentLines}`);
-                console.log(`  注释比例: ${(result.quality.metrics.commentRatio * 100).toFixed(1)}%`);
+                console.log(`  代码行数: ${result.quality.metrics?.codeLines || 0}`);
+                console.log(`  注释行数: ${result.quality.metrics?.commentLines || 0}`);
+                console.log(`  注释比例: ${((result.quality.metrics?.commentRatio || 0) * 100).toFixed(1)}%`);
                 
                 // 复杂度分析
                 console.log('');
                 this.print('🔍 复杂度分析:', 'blue');
-                console.log(`  圈复杂度: ${result.complexity.cyclomaticComplexity} (${result.complexity.level})`);
-                console.log(`  函数数量: ${result.complexity.functionCount}`);
-                console.log(`  最大嵌套深度: ${result.complexity.maxNestingDepth}`);
+                console.log(`  圈复杂度: ${result.complexity.cyclomaticComplexity} (${result.complexity.maintainabilityLevel || 'unknown'})`);
+                console.log(`  函数数量: ${result.complexity.functionCount || 'unknown'}`);
+                console.log(`  最大嵌套深度: ${result.complexity.maxNestingDepth || 'unknown'}`);
                 
                 // 安全性分析
                 console.log('');
@@ -167,28 +167,28 @@ class AIDevCLI {
                 console.log(`  风险级别: ${result.security.riskLevel}`);
                 console.log(`  安全问题: ${result.security.totalIssues} 个`);
                 
-                if (result.security.issues.length > 0) {
+                if (result.security.vulnerabilities && result.security.vulnerabilities.length > 0) {
                     console.log('');
                     this.print('🚨 安全问题:', 'red');
-                    result.security.issues.forEach((issue, i) => {
-                        console.log(`  ${i + 1}. ${issue}`);
+                    result.security.vulnerabilities.forEach((vuln, i) => {
+                        console.log(`  ${i + 1}. ${vuln.type}: ${vuln.description}`);
                     });
                 }
                 
-                if (result.security.warnings.length > 0) {
+                if (result.security.warnings && result.security.warnings.length > 0) {
                     console.log('');
                     this.print('⚠️ 安全警告:', 'yellow');
                     result.security.warnings.forEach((warning, i) => {
-                        console.log(`  ${i + 1}. ${warning}`);
+                        console.log(`  ${i + 1}. ${warning.type}: ${warning.description}`);
                     });
                 }
                 
                 // AI建议
-                if (result.aiSuggestions.length > 0) {
+                if (result.improvements && result.improvements.immediate && result.improvements.immediate.length > 0) {
                     console.log('');
                     this.print('💡 AI建议:', 'cyan');
-                    result.aiSuggestions.forEach((suggestion, i) => {
-                        console.log(`  ${i + 1}. ${suggestion}`);
+                    result.improvements.immediate.forEach((suggestion, i) => {
+                        console.log(`  ${i + 1}. ${suggestion.action}`);
                     });
                 }
                 
