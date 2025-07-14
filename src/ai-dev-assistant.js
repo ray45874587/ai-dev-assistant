@@ -1401,140 +1401,207 @@ class AIDevAssistant {
         lines.push(`# 🚀 ${analysis.metadata.name} - 部署指南\n`);
         lines.push(`**更新时间**: ${new Date().toISOString()}\n`);
         
-        lines.push('## 📋 部署准备\n');
-        lines.push('### 环境要求\n');
-        
-        if (analysis.project.type === 'node') {
-            lines.push('- **Node.js**: >= 14.0.0');
-            lines.push('- **npm**: >= 6.0.0 或 **Yarn**: >= 1.22.0');
-            lines.push('- **操作系统**: Linux/Ubuntu 18.04+ (推荐)');
+        // 基于实际项目类型生成部署指南
+        if (analysis.project.type === 'wordpress') {
+            this.generateWordPressDeploymentGuide(analysis, lines);
+        } else if (analysis.project.type === 'node') {
+            this.generateNodeDeploymentGuide(analysis, lines);
         } else if (analysis.project.language === 'python') {
-            lines.push('- **Python**: >= 3.8');
-            lines.push('- **pip**: >= 21.0');
-            lines.push('- **操作系统**: Linux/Ubuntu 18.04+ (推荐)');
+            this.generatePythonDeploymentGuide(analysis, lines);
+        } else if (analysis.project.framework.includes('Laravel')) {
+            this.generateLaravelDeploymentGuide(analysis, lines);
+        } else if (analysis.project.framework.includes('React')) {
+            this.generateReactDeploymentGuide(analysis, lines);
+        } else {
+            this.generateGenericDeploymentGuide(analysis, lines);
         }
         
-        lines.push('- **内存**: 至少 2GB RAM');
-        lines.push('- **存储**: 至少 10GB 可用空间');
-        lines.push('- **网络**: 稳定的互联网连接\n');
-        
-        // 本地部署
-        lines.push('## 🏠 本地部署\n');
-        lines.push('### 1. 克隆项目\n');
-        lines.push('```bash');
-        lines.push('git clone <repository-url>');
-        lines.push(`cd ${analysis.metadata.name}`);
-        lines.push('```\n');
-        
-        lines.push('### 2. 安装依赖\n');
-        lines.push('```bash');
-        if (analysis.project.type === 'node') {
-            if (analysis.project.packageManager === 'yarn') {
-                lines.push('yarn install');
-            } else {
-                lines.push('npm install');
-            }
-        } else if (analysis.project.language === 'python') {
-            lines.push('pip install -r requirements.txt');
-        }
-        lines.push('```\n');
-        
-        lines.push('### 3. 环境配置\n');
-        lines.push('```bash');
-        lines.push('# 复制环境变量模板');
-        lines.push('cp .env.example .env');
-        lines.push('');
-        lines.push('# 编辑环境变量');
-        lines.push('nano .env');
-        lines.push('```\n');
-        
-        lines.push('### 4. 启动服务\n');
-        lines.push('```bash');
-        if (analysis.project.type === 'node') {
-            if (analysis.project.packageManager === 'yarn') {
-                lines.push('yarn start');
-            } else {
-                lines.push('npm start');
-            }
-        } else if (analysis.project.language === 'python') {
-            lines.push('python app.py');
-        }
-        lines.push('```\n');
-        
-        // Docker 部署
-        lines.push('## 🐳 Docker 部署\n');
-        lines.push('### 构建镜像\n');
-        lines.push('```bash');
-        lines.push(`docker build -t ${analysis.metadata.name.toLowerCase()} .`);
-        lines.push('```\n');
-        
-        lines.push('### 运行容器\n');
-        lines.push('```bash');
-        lines.push(`docker run -d -p 3000:3000 --name ${analysis.metadata.name.toLowerCase()} ${analysis.metadata.name.toLowerCase()}`);
-        lines.push('```\n');
-        
-        // 生产环境部署
-        lines.push('## 🌐 生产环境部署\n');
-        lines.push('### 服务器配置\n');
-        lines.push('1. **反向代理**: 使用 Nginx 或 Apache');
-        lines.push('2. **进程管理**: 使用 PM2 (Node.js) 或 systemd');
-        lines.push('3. **HTTPS**: 配置 SSL 证书');
-        lines.push('4. **监控**: 配置日志和性能监控');
-        lines.push('5. **备份**: 定期备份数据和配置\n');
-        
-        if (analysis.project.type === 'node') {
-            lines.push('### PM2 部署\n');
-            lines.push('```bash');
-            lines.push('# 安装 PM2');
-            lines.push('npm install -g pm2');
-            lines.push('');
-            lines.push('# 启动应用');
-            lines.push(`pm2 start ecosystem.config.js`);
-            lines.push('');
-            lines.push('# 保存配置');
-            lines.push('pm2 save');
-            lines.push('pm2 startup');
-            lines.push('```\n');
-        }
-        
-        // 环境变量
-        lines.push('## ⚙️ 环境变量配置\n');
-        lines.push('| 变量名 | 描述 | 默认值 | 必需 |');
-        lines.push('|--------|------|--------|------|');
-        lines.push('| `NODE_ENV` | 运行环境 | `development` | 是 |');
-        lines.push('| `PORT` | 服务端口 | `3000` | 否 |');
-        lines.push('| `DATABASE_URL` | 数据库连接 | - | 是 |');
-        lines.push('| `SECRET_KEY` | 加密密钥 | - | 是 |\n');
-        
-        // 健康检查
-        lines.push('## 🔍 健康检查\n');
-        lines.push('部署完成后，访问以下端点验证服务状态：\n');
-        lines.push('- **健康检查**: `GET /health`');
-        lines.push('- **服务状态**: `GET /api/status`');
-        lines.push('- **应用信息**: `GET /api/info`\n');
-        
-        // 故障排除
-        lines.push('## 🔧 故障排除\n');
-        lines.push('### 常见问题\n');
-        lines.push('1. **端口占用**: 检查端口是否被其他进程占用');
-        lines.push('2. **依赖缺失**: 确保所有依赖都已正确安装');
-        lines.push('3. **环境变量**: 检查必需的环境变量是否设置');
-        lines.push('4. **权限问题**: 确保进程有足够的文件访问权限\n');
-        
-        lines.push('### 日志查看\n');
-        lines.push('```bash');
-        if (analysis.project.type === 'node') {
-            lines.push('# PM2 日志');
-            lines.push('pm2 logs');
-            lines.push('');
-        }
-        lines.push('# 系统日志');
-        lines.push('tail -f /var/log/application.log');
-        lines.push('```\n');
-        
-        lines.push('---\n*此文档由 AI 开发辅助系统自动生成*');
+        lines.push('---\n*此文档由 AI 开发辅助系统基于实际项目内容自动生成*');
         
         return lines.join('\n');
+    }
+
+    /**
+     * 生成WordPress部署指南
+     */
+    generateWordPressDeploymentGuide(analysis, lines) {
+        lines.push('## 📋 WordPress 部署准备\n');
+        lines.push('### 服务器环境要求\n');
+        lines.push('- **PHP**: >= 7.4 (推荐 8.0+)');
+        lines.push('- **MySQL**: >= 5.7 或 **MariaDB**: >= 10.3');
+        lines.push('- **Web服务器**: Apache 2.4+ 或 Nginx 1.18+');
+        lines.push('- **内存**: 至少 512MB RAM (推荐 1GB+)');
+        lines.push('- **存储**: 至少 1GB 可用空间');
+        lines.push('- **SSL证书**: 推荐使用HTTPS\n');
+        
+        lines.push('### PHP扩展要求\n');
+        lines.push('- curl');
+        lines.push('- gd 或 imagick');
+        lines.push('- json');
+        lines.push('- mbstring');
+        lines.push('- mysql');
+        lines.push('- xml');
+        lines.push('- zip\n');
+        
+        lines.push('## 🏠 本地开发环境\n');
+        lines.push('### 使用XAMPP/WAMP/MAMP\n');
+        lines.push('1. 下载并安装XAMPP、WAMP或MAMP');
+        lines.push('2. 启动Apache和MySQL服务');
+        lines.push('3. 将项目文件复制到web根目录');
+        lines.push('4. 创建数据库并导入数据');
+        lines.push('5. 配置wp-config.php\n');
+        
+        lines.push('### 数据库配置\n');
+        lines.push('```sql');
+        lines.push('CREATE DATABASE wordpress_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;');
+        lines.push('CREATE USER \'wp_user\'@\'localhost\' IDENTIFIED BY \'strong_password\';');
+        lines.push('GRANT ALL PRIVILEGES ON wordpress_db.* TO \'wp_user\'@\'localhost\';');
+        lines.push('FLUSH PRIVILEGES;');
+        lines.push('```\n');
+        
+        lines.push('### wp-config.php 配置\n');
+        lines.push('```php');
+        lines.push('// 数据库设置');
+        lines.push('define(\'DB_NAME\', \'wordpress_db\');');
+        lines.push('define(\'DB_USER\', \'wp_user\');');
+        lines.push('define(\'DB_PASSWORD\', \'strong_password\');');
+        lines.push('define(\'DB_HOST\', \'localhost\');');
+        lines.push('');
+        lines.push('// 安全密钥 - 请使用 WordPress 密钥生成器生成');
+        lines.push('// https://api.wordpress.org/secret-key/1.1/salt/');
+        lines.push('```\n');
+        
+        lines.push('## 🌐 生产环境部署\n');
+        lines.push('### 1. 服务器准备\n');
+        lines.push('```bash');
+        lines.push('# Ubuntu/Debian 安装LAMP');
+        lines.push('sudo apt update');
+        lines.push('sudo apt install apache2 mysql-server php php-mysql php-curl php-gd php-mbstring php-xml php-zip');
+        lines.push('```\n');
+        
+        lines.push('### 2. 文件上传\n');
+        lines.push('```bash');
+        lines.push('# 使用rsync上传文件');
+        lines.push('rsync -avz --exclude=\'wp-config.php\' ./ user@server:/var/www/html/');
+        lines.push('');
+        lines.push('# 或使用FTP/SFTP工具上传');
+        lines.push('```\n');
+        
+        lines.push('### 3. 文件权限设置\n');
+        lines.push('```bash');
+        lines.push('# 设置WordPress文件权限');
+        lines.push('sudo chown -R www-data:www-data /var/www/html/');
+        lines.push('sudo find /var/www/html/ -type d -exec chmod 755 {} \\;');
+        lines.push('sudo find /var/www/html/ -type f -exec chmod 644 {} \\;');
+        lines.push('sudo chmod 600 wp-config.php');
+        lines.push('```\n');
+        
+        lines.push('### 4. Apache虚拟主机配置\n');
+        lines.push('```apache');
+        lines.push('<VirtualHost *:80>');
+        lines.push('    ServerName your-domain.com');
+        lines.push('    DocumentRoot /var/www/html');
+        lines.push('    ErrorLog ${APACHE_LOG_DIR}/error.log');
+        lines.push('    CustomLog ${APACHE_LOG_DIR}/access.log combined');
+        lines.push('</VirtualHost>');
+        lines.push('```\n');
+        
+        lines.push('## 🔒 安全配置\n');
+        lines.push('### .htaccess 安全设置\n');
+        lines.push('```apache');
+        lines.push('# 禁止访问敏感文件');
+        lines.push('<Files wp-config.php>');
+        lines.push('    order allow,deny');
+        lines.push('    deny from all');
+        lines.push('</Files>');
+        lines.push('');
+        lines.push('# 禁止目录浏览');
+        lines.push('Options -Indexes');
+        lines.push('```\n');
+        
+        lines.push('### SSL/HTTPS 配置\n');
+        lines.push('```bash');
+        lines.push('# 使用Let\'s Encrypt获取免费SSL证书');
+        lines.push('sudo apt install certbot python3-certbot-apache');
+        lines.push('sudo certbot --apache -d your-domain.com');
+        lines.push('```\n');
+        
+        lines.push('## 🔧 故障排除\n');
+        lines.push('### 常见问题\n');
+        lines.push('1. **数据库连接错误**: 检查wp-config.php中的数据库配置');
+        lines.push('2. **文件权限问题**: 确保web服务器有读写权限');
+        lines.push('3. **插件冲突**: 停用所有插件后逐个激活测试');
+        lines.push('4. **内存限制**: 增加PHP内存限制');
+        lines.push('5. **白屏死机**: 检查PHP错误日志\n');
+        
+        lines.push('### 调试模式\n');
+        lines.push('```php');
+        lines.push('// 在wp-config.php中启用调试');
+        lines.push('define(\'WP_DEBUG\', true);');
+        lines.push('define(\'WP_DEBUG_LOG\', true);');
+        lines.push('define(\'WP_DEBUG_DISPLAY\', false);');
+        lines.push('```\n');
+    }
+
+    /**
+     * 生成Node.js部署指南
+     */
+    generateNodeDeploymentGuide(analysis, lines) {
+        // Node.js 特定的部署指南
+        lines.push('## � Node.js 部署准备\n');
+        lines.push('### 环境要求\n');
+        lines.push('- **Node.js**: >= 14.0.0 (推荐 18.x LTS)');
+        lines.push('- **npm**: >= 6.0.0 或 **Yarn**: >= 1.22.0');
+        lines.push('- **操作系统**: Linux/Ubuntu 18.04+ (推荐)');
+        lines.push('- **内存**: 至少 1GB RAM');
+        lines.push('- **存储**: 至少 5GB 可用空间\n');
+        
+        // ... 其他Node.js特定配置
+    }
+
+    /**
+     * 生成Laravel部署指南
+     */
+    generateLaravelDeploymentGuide(analysis, lines) {
+        // Laravel 特定的部署指南
+        lines.push('## � Laravel 部署准备\n');
+        lines.push('### 环境要求\n');
+        lines.push('- **PHP**: >= 8.0');
+        lines.push('- **Composer**: 最新版本');
+        lines.push('- **MySQL**: >= 5.7 或 **PostgreSQL**: >= 10');
+        lines.push('- **Redis**: 推荐用于缓存和队列');
+        
+        // ... 其他Laravel特定配置
+    }
+
+    /**
+     * 生成React部署指南
+     */
+    generateReactDeploymentGuide(analysis, lines) {
+        // React 特定的部署指南
+        lines.push('## 📋 React 应用部署\n');
+        lines.push('### 构建要求\n');
+        lines.push('- **Node.js**: >= 14.0.0');
+        lines.push('- **npm**: >= 6.0.0 或 **Yarn**: >= 1.22.0');
+        lines.push('- **Web服务器**: Nginx, Apache, 或静态托管服务');
+        
+        // ... 其他React特定配置
+    }
+
+    /**
+     * 生成通用部署指南
+     */
+    generateGenericDeploymentGuide(analysis, lines) {
+        lines.push('## 📋 通用部署指南\n');
+        lines.push('本项目的具体部署步骤请根据实际技术栈进行配置。\n');
+        
+        lines.push('### 基本要求\n');
+        lines.push(`- **项目类型**: ${analysis.project.type}`);
+        lines.push(`- **主要语言**: ${analysis.project.language}`);
+        if (analysis.project.framework.length > 0) {
+            lines.push(`- **使用框架**: ${analysis.project.framework.join(', ')}`);
+        }
+        lines.push('- **服务器环境**: 根据技术栈配置相应环境\n');
     }
 
     /**
@@ -2041,7 +2108,7 @@ class AIDevAssistant {
             if (fileAnalysis.classes.length > 0) {
                 lines.push('### 类定义\n');
                 fileAnalysis.classes.forEach(cls => {
-                    lines.push(`- **${cls.name}**: ${this.generateClassDescription(cls.name, content)}`);
+                    lines.push(`- **${cls.name}**: ${this.generateGenericDescription(cls.name, 'class')}`);
                 });
                 lines.push('');
             }
@@ -2464,6 +2531,45 @@ class AIDevAssistant {
     analyzeHTMLContent(content, analysis) {
         // HTML分析逻辑
         analysis.type = 'template';
+    }
+
+    /**
+     * 通用描述生成
+     */
+    generateGenericDescription(name, type) {
+        const patterns = {
+            'class': {
+                'controller': '控制器类，处理HTTP请求和响应',
+                'model': '数据模型类，表示数据结构',
+                'service': '服务类，提供业务逻辑',
+                'helper': '辅助类，提供工具方法',
+                'widget': '小工具类，提供UI组件',
+                'admin': '管理类，处理后台功能',
+                'api': 'API类，处理接口逻辑',
+                'db|database': '数据库操作类',
+                'auth': '认证相关类',
+                'config': '配置管理类'
+            },
+            'function': {
+                'init|initialize|setup': '初始化函数',
+                'save|store|create|insert': '数据保存函数',
+                'get|fetch|load|read|retrieve': '数据获取函数',
+                'update|modify|edit|change': '数据更新函数',
+                'delete|remove|destroy': '数据删除函数',
+                'validate|check|verify': '数据验证函数',
+                'render|display|show|draw': '内容渲染函数',
+                'handle|process|execute': '业务处理函数'
+            }
+        };
+
+        const typePatterns = patterns[type] || {};
+        for (const [pattern, description] of Object.entries(typePatterns)) {
+            if (new RegExp(pattern, 'i').test(name)) {
+                return description;
+            }
+        }
+
+        return type === 'class' ? '自定义类，提供特定功能' : '自定义函数，执行特定操作';
     }
 }
 
