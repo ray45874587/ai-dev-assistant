@@ -3,7 +3,7 @@
 /**
  * AI开发辅助系统 - 命令行界面
  * AI Development Assistant - Command Line Interface
- * Version: 1.1.1
+ * Version: 1.1.0
  */
 
 const fs = require('fs');
@@ -85,7 +85,7 @@ class AIDevCLI {
         console.log('');
         this.print('════════════════════════════════════════════════════════', 'cyan');
         this.print('    🤖 AI开发辅助系统 (AI Development Assistant)', 'cyan');
-        this.print('    Version: 1.0.3', 'cyan');
+        this.print('    Version: 1.1.0', 'cyan');
         this.print('════════════════════════════════════════════════════════', 'cyan');
         console.log('');
     }
@@ -482,7 +482,7 @@ class AIDevCLI {
      * 版本命令
      */
     versionCommand(params) {
-        console.log('1.0.3');
+        console.log('1.1.0');
     }
 
     /**
