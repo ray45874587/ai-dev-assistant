@@ -3,7 +3,7 @@
 /**
  * AI开发辅助系统 - 命令行界面
  * AI Development Assistant - Command Line Interface
- * Version: 1.0.3
+ * Version: 1.1.0
  */
 
 const fs = require('fs');
