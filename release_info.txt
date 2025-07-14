@@ -1,19 +1,1 @@
-=== GitHub Release 填写信息 ===
-
-发布页面: https://github.com/ray45874587/ai-dev-assistant/releases/new
-
-【标签】: v1.0.0 (应该已自动选择)
-
-【发布标题】: 
-🤖 AI开发辅助系统 v1.0.0
-
-【发布说明】: 
-请复制 release_notes.md 文件的全部内容
-
-【附件】:
-请上传 ai-dev-assistant-v1.0.0.tar.gz 文件
-
-【设置】:
-✅ Set as the latest release
-✅ Create a discussion for this release (推荐)
 
