@@ -3,7 +3,7 @@
 /**
  * AI开发辅助系统 - 命令行界面
  * AI Development Assistant - Command Line Interface
- * Version: 1.0.1
+ * Version: 1.0.3
  */
 
 const fs = require('fs');
@@ -33,6 +33,7 @@ class AIDevCLI {
             'update': this.updateCommand.bind(this),
             'analyze': this.analyzeCommand.bind(this),
             'docs': this.docsCommand.bind(this),
+            'doc-file': this.docFileCommand.bind(this),
             'focus': this.focusCommand.bind(this),
             'audit': this.auditCommand.bind(this),
             'clean': this.cleanCommand.bind(this),
@@ -84,7 +85,7 @@ class AIDevCLI {
         console.log('');
         this.print('════════════════════════════════════════════════════════', 'cyan');
         this.print('    🤖 AI开发辅助系统 (AI Development Assistant)', 'cyan');
-        this.print('    Version: 1.0.0', 'cyan');
+        this.print('    Version: 1.0.3', 'cyan');
         this.print('════════════════════════════════════════════════════════', 'cyan');
         console.log('');
     }
@@ -339,6 +340,60 @@ class AIDevCLI {
     }
 
     /**
+     * 单文件文档生成命令
+     */
+    async docFileCommand(params) {
+        const filePath = params[0];
+        
+        if (!filePath) {
+            this.error('请指定要生成文档的文件路径');
+            this.info('使用方法: ai-dev doc-file <file-path>');
+            this.info('示例: ai-dev doc-file wp-content/themes/mytheme/functions.php');
+            return;
+        }
+        
+        // 检查文件是否存在
+        if (!fs.existsSync(filePath)) {
+            this.error(`文件不存在: ${filePath}`);
+            return;
+        }
+        
+        this.info(`为文件生成文档: ${filePath}`);
+        
+        try {
+            const result = await this.assistant.generateFileDocumentation(filePath);
+            
+            if (result.success) {
+                this.success('文件文档生成完成！');
+                console.log('');
+                this.info('生成的文档:');
+                if (result.docFile) {
+                    console.log(`  📄 ${result.docFile}`);
+                }
+                if (result.codeComments) {
+                    console.log(`  💬 代码注释已添加到原文件`);
+                }
+                console.log('');
+                this.info('文档内容包括:');
+                console.log('  - 文件功能说明');
+                console.log('  - 函数/类/方法文档');
+                console.log('  - 使用示例');
+                console.log('  - 参数说明');
+                console.log('  - 返回值说明');
+                if (result.suggestions && result.suggestions.length > 0) {
+                    console.log('');
+                    this.info('改进建议:');
+                    result.suggestions.forEach(suggestion => {
+                        console.log(`  💡 ${suggestion}`);
+                    });
+                }
+            }
+        } catch (error) {
+            this.error(`文件文档生成失败: ${error.message}`);
+        }
+    }
+
+    /**
      * 焦点命令
      */
     async focusCommand(params) {
@@ -427,7 +482,7 @@ class AIDevCLI {
      * 版本命令
      */
     versionCommand(params) {
-        console.log('1.0.0');
+        console.log('1.0.3');
     }
 
     /**
@@ -446,6 +501,7 @@ class AIDevCLI {
         console.log('  update        更新项目上下文');
         console.log('  analyze [file] 分析代码质量（可指定文件）');
         console.log('  docs          生成项目文档');
+        console.log('  doc-file <file> 为指定文件生成详细文档');
         console.log('  focus <area>  设置开发焦点');
         console.log('  audit         执行安全审计');
         console.log('  clean         清理系统文件');

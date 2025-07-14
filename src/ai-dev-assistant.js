@@ -1,7 +1,7 @@
 /**
  * AI开发辅助系统 - 主入口文件
  * AI Development Assistant - Main Entry Point
- * Version: 1.0.1
+ * Version: 1.1.0
  */
 
 const fs = require('fs');
@@ -1611,6 +1611,859 @@ class AIDevAssistant {
         lines.push('---\n*由 AI 开发辅助系统自动生成*');
         
         return lines.join('\n');
+    }
+
+    /**
+     * 为单个文件生成详细文档
+     */
+    async generateFileDocumentation(filePath) {
+        console.log(`📄 为文件生成文档: ${filePath}`);
+        
+        try {
+            // 确保文件存在
+            const fullPath = path.resolve(this.projectPath, filePath);
+            if (!fs.existsSync(fullPath)) {
+                throw new Error(`文件不存在: ${filePath}`);
+            }
+            
+            // 读取文件内容
+            const fileContent = fs.readFileSync(fullPath, 'utf8');
+            const fileExtension = path.extname(filePath).toLowerCase();
+            const fileName = path.basename(filePath);
+            const relativePath = path.relative(this.projectPath, fullPath);
+            
+            // 获取项目分析结果
+            let projectAnalysis;
+            const analysisPath = path.join(this.contextDir, 'project-analysis.json');
+            if (fs.existsSync(analysisPath)) {
+                projectAnalysis = JSON.parse(fs.readFileSync(analysisPath, 'utf8'));
+            } else {
+                // 如果没有项目分析，进行快速分析
+                projectAnalysis = await this.analyzer.analyze();
+            }
+            
+            // 分析文件类型和内容
+            const fileAnalysis = this.analyzeFileContent(fileContent, fileExtension, fileName);
+            
+            // 生成文档内容
+            const docContent = this.generateFileDocContent(
+                filePath, 
+                fileContent, 
+                fileAnalysis, 
+                projectAnalysis
+            );
+            
+            // 确保AI助手文档目录存在
+            const aiDocsDir = path.join(this.projectPath, 'AI助手文档');
+            const aiDocsDirEn = path.join(this.projectPath, 'AIAssistantDocs');
+            
+            let targetDocsDir = aiDocsDir;
+            if (fs.existsSync(aiDocsDirEn) && !fs.existsSync(aiDocsDir)) {
+                targetDocsDir = aiDocsDirEn;
+            }
+            
+            if (!fs.existsSync(targetDocsDir)) {
+                fs.mkdirSync(targetDocsDir, { recursive: true });
+            }
+            
+            // 创建文件专用的文档目录
+            const fileDocsDir = path.join(targetDocsDir, '文件文档');
+            if (!fs.existsSync(fileDocsDir)) {
+                fs.mkdirSync(fileDocsDir, { recursive: true });
+            }
+            
+            // 生成文档文件名
+            const docFileName = `${fileName.replace(/\.[^/.]+$/, '')}_文档.md`;
+            const docFilePath = path.join(fileDocsDir, docFileName);
+            
+            // 写入文档文件
+            fs.writeFileSync(docFilePath, docContent);
+            
+            // 生成改进建议
+            const suggestions = this.generateFileSuggestions(fileAnalysis, projectAnalysis);
+            
+            console.log('✅ 文件文档生成完成');
+            
+            return {
+                success: true,
+                docFile: path.relative(this.projectPath, docFilePath),
+                suggestions: suggestions,
+                codeComments: false // 暂时不修改原文件
+            };
+            
+        } catch (error) {
+            console.error('文件文档生成失败:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * 智能分析文件内容
+     */
+    analyzeFileContent(content, extension, fileName) {
+        const analysis = {
+            type: 'unknown',
+            language: this.getLanguageFromExtension(extension),
+            size: content.length,
+            lines: content.split('\n').length,
+            functions: [],
+            classes: [],
+            variables: [],
+            comments: [],
+            imports: [],
+            exports: [],
+            complexity: 'low',
+            documentation: false,
+            framework: null,
+            purposes: [],
+            patterns: [],
+            security: {
+                issues: [],
+                suggestions: []
+            }
+        };
+
+        // 智能检测框架
+        analysis.framework = this.detectFileFramework(fileName, content);
+        
+        // 智能分析用途
+        analysis.purposes = this.analyzeFilePurpose(fileName, content, analysis.framework);
+
+        // 通用代码分析
+        this.analyzeGenericContent(content, analysis);
+
+        // 语言特定分析
+        if (extension === '.php') {
+            this.analyzePHPContent(content, analysis);
+        } else if (['.js', '.jsx', '.ts', '.tsx'].includes(extension)) {
+            this.analyzeJavaScriptContent(content, analysis);
+        } else if (['.css', '.scss', '.sass', '.less'].includes(extension)) {
+            this.analyzeCSSContent(content, analysis);
+        } else if (['.html', '.htm'].includes(extension)) {
+            this.analyzeHTMLContent(content, analysis);
+        } else if (extension === '.py') {
+            this.analyzePythonContent(content, analysis);
+        }
+
+        // 计算复杂度
+        analysis.complexity = this.calculateFileComplexity(analysis);
+
+        return analysis;
+    }
+
+    /**
+     * 通用代码分析
+     */
+    analyzeGenericContent(content, analysis) {
+        // 检测模式
+        const patterns = {
+            'mvc': /controller|model|view/i,
+            'singleton': /singleton|instance/i,
+            'factory': /factory|create/i,
+            'observer': /observer|notify|subscribe/i,
+            'decorator': /decorator|wrapper/i
+        };
+
+        analysis.patterns = Object.entries(patterns)
+            .filter(([name, pattern]) => pattern.test(content))
+            .map(([name]) => name);
+
+        // 检测文档
+        analysis.documentation = content.includes('/**') || content.includes('"""') || 
+                                content.includes('///') || content.includes('##');
+
+        // 提取注释
+        const commentPatterns = [
+            /\/\*[\s\S]*?\*\//g,  // /* */ 注释
+            /\/\/.*$/gm,           // // 注释
+            /#.*$/gm,              // # 注释
+            /"""[\s\S]*?"""/g,     // Python 文档字符串
+        ];
+
+        commentPatterns.forEach(pattern => {
+            const matches = content.match(pattern);
+            if (matches) {
+                analysis.comments.push(...matches);
+            }
+        });
+    }
+
+    /**
+     * 从扩展名获取语言
+     */
+    getLanguageFromExtension(extension) {
+        const languageMap = {
+            '.php': 'php',
+            '.js': 'javascript',
+            '.jsx': 'javascript',
+            '.ts': 'typescript',
+            '.tsx': 'typescript',
+            '.css': 'css',
+            '.scss': 'scss',
+            '.sass': 'sass',
+            '.less': 'less',
+            '.html': 'html',
+            '.htm': 'html',
+            '.py': 'python',
+            '.java': 'java',
+            '.cs': 'csharp',
+            '.rb': 'ruby',
+            '.go': 'go',
+            '.rs': 'rust'
+        };
+        return languageMap[extension] || 'unknown';
+    }
+
+    /**
+     * 智能检测文件的框架类型
+     */
+    detectFileFramework(fileName, content) {
+        const patterns = {
+            wordpress: [/wp_\w+\(/, /add_action\(/, /add_filter\(/, /\$wpdb/, /WP_\w+/],
+            laravel: [/use Illuminate\\/, /Artisan::/, /Route::/, /Schema::/],
+            django: [/from django/, /django\./, /models\.Model/, /HttpResponse/],
+            react: [/import React/, /useState/, /useEffect/, /jsx|tsx$/],
+            vue: [/Vue\./, /<template>/, /<script>/, /\.vue$/],
+            angular: [/@Component/, /@Injectable/, /Angular/, /ng-/],
+            express: [/express\(\)/, /app\.get/, /app\.post/, /req\s*,\s*res/],
+            symfony: [/use Symfony\\/, /namespace App\\/, /@Route/, /Controller/]
+        };
+
+        for (const [framework, framePatterns] of Object.entries(patterns)) {
+            if (framePatterns.some(pattern => pattern.test(content) || pattern.test(fileName))) {
+                return framework;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 智能分析文件用途
+     */
+    analyzeFilePurpose(fileName, content, framework = null) {
+        const purposes = [];
+        
+        // 通用模式检测
+        if (content.includes('function') || content.includes('def ') || content.includes('class ')) {
+            purposes.push('logic');
+        }
+        if (content.includes('SELECT') || content.includes('INSERT') || content.includes('UPDATE')) {
+            purposes.push('database');
+        }
+        if (content.includes('route') || content.includes('endpoint') || content.includes('api')) {
+            purposes.push('routing');
+        }
+        if (content.includes('test') || content.includes('Test') || content.includes('assert')) {
+            purposes.push('testing');
+        }
+        if (content.includes('config') || content.includes('Config') || fileName.includes('config')) {
+            purposes.push('configuration');
+        }
+
+        return purposes.length > 0 ? purposes : ['general'];
+    }
+
+    /**
+     * 分析PHP内容
+     */
+    analyzePHPContent(content, analysis) {
+        // 提取函数
+        const functionMatches = content.match(/function\s+(\w+)\s*\([^)]*\)/g);
+        if (functionMatches) {
+            analysis.functions = functionMatches.map(match => {
+                const name = match.match(/function\s+(\w+)/)[1];
+                return { name, type: 'function' };
+            });
+        }
+
+        // 提取类
+        const classMatches = content.match(/class\s+(\w+)/g);
+        if (classMatches) {
+            analysis.classes = classMatches.map(match => {
+                const name = match.match(/class\s+(\w+)/)[1];
+                return { name, type: 'class' };
+            });
+        }
+
+        // 通用安全检查
+        this.checkGeneralSecurity(content, analysis, 'php');
+
+        // 检查文档注释
+        analysis.documentation = content.includes('/**') && content.includes('*/');
+    }
+
+    /**
+     * 通用安全检查
+     */
+    checkGeneralSecurity(content, analysis, language) {
+        const securityIssues = [];
+        const suggestions = [];
+
+        // 通用安全模式
+        const securityPatterns = {
+            'input_validation': {
+                patterns: [/\$_(GET|POST|REQUEST)/, /request\.(get|post)/, /input\(/],
+                message: '发现用户输入，需要验证和清理',
+                suggestion: '对所有用户输入进行验证、清理和转义'
+            },
+            'sql_injection': {
+                patterns: [/query.*\$/, /sql.*\+/, /SELECT.*\$/, /INSERT.*\$/],
+                message: '可能存在SQL注入风险',
+                suggestion: '使用参数化查询或ORM来防止SQL注入'
+            },
+            'xss_risk': {
+                patterns: [/echo\s+\$/, /print\s+\$/, /innerHTML\s*=/, /document\.write/],
+                message: '可能存在XSS风险',
+                suggestion: '对输出内容进行HTML转义'
+            },
+            'file_inclusion': {
+                patterns: [/include\s+\$/, /require\s+\$/, /file_get_contents\s*\(/],
+                message: '文件操作风险',
+                suggestion: '验证文件路径，使用白名单机制'
+            }
+        };
+
+        Object.entries(securityPatterns).forEach(([type, config]) => {
+            if (config.patterns.some(pattern => pattern.test(content))) {
+                securityIssues.push(config.message);
+                suggestions.push(config.suggestion);
+            }
+        });
+
+        analysis.security.issues = securityIssues;
+        analysis.security.suggestions = suggestions;
+    }
+
+    /**
+     * 分析Python内容
+     */
+    analyzePythonContent(content, analysis) {
+        // 提取函数
+        const functionMatches = content.match(/def\s+(\w+)\s*\([^)]*\):/g);
+        if (functionMatches) {
+            analysis.functions = functionMatches.map(match => {
+                const name = match.match(/def\s+(\w+)/)[1];
+                return { name, type: 'function' };
+            });
+        }
+
+        // 提取类
+        const classMatches = content.match(/class\s+(\w+).*:/g);
+        if (classMatches) {
+            analysis.classes = classMatches.map(match => {
+                const name = match.match(/class\s+(\w+)/)[1];
+                return { name, type: 'class' };
+            });
+        }
+
+        // 通用安全检查
+        this.checkGeneralSecurity(content, analysis, 'python');
+    }
+
+    /**
+     * 分析JavaScript内容
+     */
+    analyzeJavaScriptContent(content, analysis) {
+        // 提取函数
+        const functionPatterns = [
+            /function\s+(\w+)/g,
+            /const\s+(\w+)\s*=\s*\([^)]*\)\s*=>/g,
+            /let\s+(\w+)\s*=\s*function/g,
+            /(\w+)\s*:\s*function/g
+        ];
+
+        functionPatterns.forEach(pattern => {
+            const matches = [...content.matchAll(pattern)];
+            if (matches) {
+                matches.forEach(match => {
+                    analysis.functions.push({ name: match[1], type: 'function' });
+                });
+            }
+        });
+
+        // 提取类
+        const classMatches = content.match(/class\s+(\w+)/g);
+        if (classMatches) {
+            analysis.classes = classMatches.map(match => {
+                const name = match.match(/class\s+(\w+)/)[1];
+                return { name, type: 'class' };
+            });
+        }
+
+        // 通用安全检查
+        this.checkGeneralSecurity(content, analysis, 'javascript');
+    }
+
+    /**
+     * 计算文件复杂度
+     */
+    calculateFileComplexity(analysis) {
+        let score = 0;
+        
+        score += analysis.functions.length * 2;
+        score += analysis.classes.length * 3;
+        score += Math.floor(analysis.lines / 100);
+        
+        if (score < 10) return 'low';
+        if (score < 25) return 'medium';
+        return 'high';
+    }
+
+    /**
+     * 生成文件文档内容
+     */
+    generateFileDocContent(filePath, content, fileAnalysis, projectAnalysis) {
+        const lines = [];
+        const fileName = path.basename(filePath);
+        
+        lines.push(`# 📄 ${fileName} - 文件文档\n`);
+        lines.push(`**文件路径**: ${filePath}`);
+        lines.push(`**文件类型**: ${fileAnalysis.language}`);
+        lines.push(`**文件大小**: ${Math.round(fileAnalysis.size / 1024 * 100) / 100} KB`);
+        lines.push(`**代码行数**: ${fileAnalysis.lines}`);
+        lines.push(`**复杂度**: ${fileAnalysis.complexity}`);
+        
+        if (fileAnalysis.type === 'wordpress') {
+            lines.push(`**WordPress类型**: ${fileAnalysis.wordpressType}`);
+        }
+        
+        lines.push(`**生成时间**: ${new Date().toLocaleString()}\n`);
+
+        // 文件概述
+        lines.push('## 📋 文件概述\n');
+        lines.push(this.generateFileOverview(fileName, fileAnalysis, content));
+        lines.push('');
+
+        // 功能分析
+        if (fileAnalysis.functions.length > 0 || fileAnalysis.classes.length > 0) {
+            lines.push('## 🔧 功能分析\n');
+            
+            if (fileAnalysis.classes.length > 0) {
+                lines.push('### 类定义\n');
+                fileAnalysis.classes.forEach(cls => {
+                    lines.push(`- **${cls.name}**: ${this.generateClassDescription(cls.name, content)}`);
+                });
+                lines.push('');
+            }
+            
+            if (fileAnalysis.functions.length > 0) {
+                lines.push('### 函数定义\n');
+                fileAnalysis.functions.forEach(func => {
+                    lines.push(`- **${func.name}**: ${this.generateFunctionDescription(func.name, content)}`);
+                });
+                lines.push('');
+            }
+        }
+
+        // 框架特定功能
+        if (fileAnalysis.framework) {
+            lines.push(`## 🎯 ${fileAnalysis.framework.toUpperCase()}框架功能\n`);
+            lines.push(this.generateFrameworkFunctionality(content, fileAnalysis));
+            lines.push('');
+        }
+
+        // 代码示例
+        lines.push('## 💡 使用示例\n');
+        lines.push(this.generateUsageExamples(fileName, fileAnalysis, content));
+        lines.push('');
+
+        // 安全分析
+        if (fileAnalysis.security.issues.length > 0) {
+            lines.push('## 🛡️ 安全分析\n');
+            lines.push('### ⚠️ 发现的安全问题\n');
+            fileAnalysis.security.issues.forEach(issue => {
+                lines.push(`- ${issue}`);
+            });
+            lines.push('');
+            
+            if (fileAnalysis.security.suggestions.length > 0) {
+                lines.push('### 🔒 安全建议\n');
+                fileAnalysis.security.suggestions.forEach(suggestion => {
+                    lines.push(`- ${suggestion}`);
+                });
+                lines.push('');
+            }
+        }
+
+        // 改进建议
+        lines.push('## 📈 改进建议\n');
+        const suggestions = this.generateFileSuggestions(fileAnalysis, projectAnalysis);
+        suggestions.forEach(suggestion => {
+            lines.push(`- ${suggestion}`);
+        });
+        lines.push('');
+
+        // 相关文件
+        lines.push('## 🔗 相关文件\n');
+        lines.push(this.generateRelatedFiles(filePath, projectAnalysis));
+        lines.push('');
+
+        lines.push('---\n*此文档由 AI 开发辅助系统自动生成*');
+        
+        return lines.join('\n');
+    }
+
+    /**
+     * 智能生成文件概述
+     */
+    generateFileOverview(fileName, fileAnalysis, content) {
+        const framework = fileAnalysis.framework;
+        const purposes = fileAnalysis.purposes;
+        
+        let overview = `这是一个${fileAnalysis.language}文件`;
+        
+        if (framework) {
+            overview += `，属于${framework}框架`;
+        }
+        
+        if (purposes.length > 0) {
+            const purposeMap = {
+                'logic': '业务逻辑',
+                'database': '数据库操作',
+                'routing': '路由处理',
+                'testing': '测试代码',
+                'configuration': '配置文件',
+                'general': '通用功能'
+            };
+            const purposeTexts = purposes.map(p => purposeMap[p] || p);
+            overview += `，主要用于${purposeTexts.join('、')}`;
+        }
+        
+        overview += `，包含${fileAnalysis.lines}行代码`;
+        
+        if (fileAnalysis.functions.length > 0) {
+            overview += `，定义了${fileAnalysis.functions.length}个函数`;
+        }
+        
+        if (fileAnalysis.classes.length > 0) {
+            overview += `，包含${fileAnalysis.classes.length}个类`;
+        }
+        
+        return overview + '。';
+    }
+
+    /**
+     * 智能生成函数描述
+     */
+    generateFunctionDescription(functionName, content) {
+        // 通用函数名模式分析
+        const patterns = {
+            'init|initialize|setup': '初始化函数',
+            'save|store|create|insert': '数据保存函数',
+            'get|fetch|load|read|retrieve': '数据获取函数',
+            'update|modify|edit|change': '数据更新函数',
+            'delete|remove|destroy': '数据删除函数',
+            'validate|check|verify': '数据验证函数',
+            'render|display|show|draw': '内容渲染函数',
+            'handle|process|execute': '业务处理函数',
+            'connect|disconnect|open|close': '连接管理函数',
+            'send|receive|transmit': '数据传输函数'
+        };
+
+        for (const [pattern, description] of Object.entries(patterns)) {
+            if (new RegExp(pattern, 'i').test(functionName)) {
+                return description;
+            }
+        }
+
+        return '自定义函数，执行特定业务逻辑';
+    }
+
+    /**
+     * 智能生成框架功能说明
+     */
+    generateFrameworkFunctionality(content, fileAnalysis) {
+        const framework = fileAnalysis.framework;
+        if (!framework) return '- 包含通用的业务逻辑';
+
+        const frameworkFeatures = {
+            wordpress: this.getWordPressFeatures(content),
+            laravel: this.getLaravelFeatures(content),
+            django: this.getDjangoFeatures(content),
+            react: this.getReactFeatures(content),
+            vue: this.getVueFeatures(content),
+            express: this.getExpressFeatures(content)
+        };
+
+        return frameworkFeatures[framework] || `- 使用${framework}框架的相关功能`;
+    }
+
+    /**
+     * 通用框架特性检测
+     */
+    getWordPressFeatures(content) {
+        const features = [];
+        const patterns = {
+            'add_action': '动作钩子注册',
+            'add_filter': '过滤器钩子注册',
+            'wp_enqueue': '资源文件加载',
+            'register_post_type': '自定义文章类型',
+            'wp_ajax': 'AJAX请求处理'
+        };
+
+        Object.entries(patterns).forEach(([pattern, desc]) => {
+            if (content.includes(pattern)) {
+                features.push(`- **${desc}**: 使用${pattern}实现相关功能`);
+            }
+        });
+
+        return features.length > 0 ? features.join('\n') : '- WordPress相关功能';
+    }
+
+    getLaravelFeatures(content) {
+        const features = [];
+        const patterns = {
+            'Route::': '路由定义',
+            'Schema::': '数据库迁移',
+            'Model': '数据模型',
+            'Controller': '控制器逻辑'
+        };
+
+        Object.entries(patterns).forEach(([pattern, desc]) => {
+            if (content.includes(pattern)) {
+                features.push(`- **${desc}**: Laravel框架${desc.toLowerCase()}功能`);
+            }
+        });
+
+        return features.length > 0 ? features.join('\n') : '- Laravel框架功能';
+    }
+
+    getDjangoFeatures(content) {
+        const features = [];
+        const patterns = {
+            'models.Model': '数据模型定义',
+            'HttpResponse': 'HTTP响应处理',
+            'url(': 'URL路由配置',
+            'render': '模板渲染'
+        };
+
+        Object.entries(patterns).forEach(([pattern, desc]) => {
+            if (content.includes(pattern)) {
+                features.push(`- **${desc}**: Django框架${desc.toLowerCase()}功能`);
+            }
+        });
+
+        return features.length > 0 ? features.join('\n') : '- Django框架功能';
+    }
+
+    getReactFeatures(content) {
+        const features = [];
+        const patterns = {
+            'useState': 'React状态管理',
+            'useEffect': 'React副作用处理',
+            'Component': 'React组件定义',
+            'props': 'React组件属性'
+        };
+
+        Object.entries(patterns).forEach(([pattern, desc]) => {
+            if (content.includes(pattern)) {
+                features.push(`- **${desc}**: ${desc}功能`);
+            }
+        });
+
+        return features.length > 0 ? features.join('\n') : '- React组件功能';
+    }
+
+    getVueFeatures(content) {
+        const features = [];
+        const patterns = {
+            '<template>': 'Vue模板结构',
+            '<script>': 'Vue组件逻辑',
+            'data()': 'Vue数据定义',
+            'methods': 'Vue方法定义'
+        };
+
+        Object.entries(patterns).forEach(([pattern, desc]) => {
+            if (content.includes(pattern)) {
+                features.push(`- **${desc}**: ${desc}功能`);
+            }
+        });
+
+        return features.length > 0 ? features.join('\n') : '- Vue组件功能';
+    }
+
+    getExpressFeatures(content) {
+        const features = [];
+        const patterns = {
+            'app.get': 'GET路由处理',
+            'app.post': 'POST路由处理',
+            'middleware': '中间件使用',
+            'express()': 'Express应用初始化'
+        };
+
+        Object.entries(patterns).forEach(([pattern, desc]) => {
+            if (content.includes(pattern)) {
+                features.push(`- **${desc}**: ${desc}功能`);
+            }
+        });
+
+        return features.length > 0 ? features.join('\n') : '- Express服务器功能';
+    }
+
+    /**
+     * 智能生成使用示例
+     */
+    generateUsageExamples(fileName, fileAnalysis, content) {
+        const framework = fileAnalysis.framework;
+        const language = fileAnalysis.language;
+        
+        // 根据框架生成示例
+        if (framework === 'wordpress') {
+            if (fileName === 'functions.php') {
+                return '```php\n// 在主题的functions.php中添加功能\n// 文件会自动被WordPress加载\n```';
+            }
+            return '```php\n// WordPress相关功能，通过插件或主题激活\n// 遵循WordPress开发标准\n```';
+        }
+        
+        if (framework === 'laravel') {
+            return '```php\n// Laravel框架文件\n// 通过路由或服务容器调用相关功能\n```';
+        }
+        
+        if (framework === 'react') {
+            return '```jsx\n// React组件使用\n// import Component from \'./path/to/component\'\n// <Component {...props} />\n```';
+        }
+        
+        if (framework === 'vue') {
+            return '```vue\n<!-- Vue组件使用 -->\n<!-- <component-name></component-name> -->\n```';
+        }
+        
+        if (framework === 'express') {
+            return '```javascript\n// Express路由或中间件\n// 通过app.use()或路由调用\n```';
+        }
+        
+        // 通用语言示例
+        if (language === 'javascript') {
+            return '```javascript\n// 在HTML中引入此文件\n// <script src="path/to/file.js"></script>\n```';
+        }
+        
+        if (language === 'python') {
+            return '```python\n# Python模块导入\n# import module_name\n# 或 from module_name import function_name\n```';
+        }
+        
+        return '```\n// 根据文件类型在适当的地方引入和使用\n```';
+    }
+
+    /**
+     * 智能生成文件改进建议
+     */
+    generateFileSuggestions(fileAnalysis, projectAnalysis) {
+        const suggestions = [];
+        
+        // 通用改进建议
+        if (!fileAnalysis.documentation) {
+            suggestions.push('添加详细的代码注释和函数文档');
+        }
+        
+        if (fileAnalysis.complexity === 'high') {
+            suggestions.push('考虑将复杂的函数拆分为更小的、更易维护的函数');
+        }
+        
+        if (fileAnalysis.lines > 500) {
+            suggestions.push('文件较大，考虑模块化拆分以提高可维护性');
+        }
+        
+        // 框架特定建议
+        if (fileAnalysis.framework) {
+            suggestions.push(`遵循${fileAnalysis.framework}框架的最佳实践和编码标准`);
+            
+            if (fileAnalysis.framework === 'wordpress') {
+                suggestions.push('使用WordPress标准的PHPDoc注释格式');
+                suggestions.push('确保代码符合WordPress编码规范');
+            } else if (fileAnalysis.framework === 'react') {
+                suggestions.push('考虑使用React Hooks优化组件逻辑');
+                suggestions.push('添加PropTypes或TypeScript类型定义');
+            } else if (fileAnalysis.framework === 'laravel') {
+                suggestions.push('使用Laravel的服务容器和依赖注入');
+                suggestions.push('遵循PSR-4自动加载标准');
+            }
+        }
+        
+        // 安全建议
+        if (fileAnalysis.security.suggestions.length > 0) {
+            suggestions.push(...fileAnalysis.security.suggestions);
+        }
+        
+        // 模式建议
+        if (fileAnalysis.patterns.length === 0) {
+            suggestions.push('考虑应用合适的设计模式来改善代码结构');
+        }
+        
+        // 测试建议
+        if (!fileAnalysis.purposes.includes('testing')) {
+            suggestions.push('为核心功能添加单元测试');
+        }
+        
+        return suggestions.length > 0 ? suggestions : ['代码结构良好，继续保持当前的开发实践'];
+    }
+
+    /**
+     * 智能生成相关文件
+     */
+    generateRelatedFiles(filePath, projectAnalysis) {
+        const fileName = path.basename(filePath);
+        const relatedFiles = [];
+        const directory = path.dirname(filePath);
+        
+        // 基于项目类型推荐相关文件
+        if (projectAnalysis.project.framework.includes('WordPress')) {
+            if (fileName === 'functions.php') {
+                relatedFiles.push('- style.css - 主题样式文件');
+                relatedFiles.push('- index.php - 主题主模板');
+                relatedFiles.push('- wp-config.php - WordPress配置文件');
+            } else if (directory.includes('wp-content/themes/')) {
+                relatedFiles.push('- functions.php - 主题函数文件');
+                relatedFiles.push('- style.css - 主题样式文件');
+            } else if (directory.includes('wp-content/plugins/')) {
+                relatedFiles.push('- 其他插件文件');
+                relatedFiles.push('- wp-config.php - WordPress配置文件');
+            }
+        } else if (projectAnalysis.project.framework.includes('Laravel')) {
+            if (fileName.includes('Controller')) {
+                relatedFiles.push('- routes/web.php - 路由定义');
+                relatedFiles.push('- resources/views/ - 视图模板');
+                relatedFiles.push('- app/Models/ - 数据模型');
+            } else if (fileName.includes('Model')) {
+                relatedFiles.push('- database/migrations/ - 数据库迁移');
+                relatedFiles.push('- app/Http/Controllers/ - 控制器');
+            }
+        } else if (projectAnalysis.project.framework.includes('React')) {
+            if (fileName.includes('Component')) {
+                relatedFiles.push('- package.json - 项目依赖');
+                relatedFiles.push('- src/index.js - 应用入口');
+                relatedFiles.push('- public/index.html - HTML模板');
+            }
+        } else if (projectAnalysis.project.framework.includes('Express')) {
+            if (fileName.includes('route')) {
+                relatedFiles.push('- app.js - 应用主文件');
+                relatedFiles.push('- package.json - 项目配置');
+                relatedFiles.push('- middleware/ - 中间件文件');
+            }
+        }
+        
+        // 通用相关文件推荐
+        if (relatedFiles.length === 0) {
+            relatedFiles.push('- package.json - 项目配置文件');
+            relatedFiles.push('- README.md - 项目说明文档');
+            relatedFiles.push('- .gitignore - Git忽略规则');
+        }
+        
+        return relatedFiles.join('\n');
+    }
+
+    /**
+     * 生成CSS内容分析（占位符）
+     */
+    analyzeCSSContent(content, analysis) {
+        // CSS分析逻辑
+        analysis.type = 'stylesheet';
+    }
+
+    /**
+     * 生成HTML内容分析（占位符）
+     */
+    analyzeHTMLContent(content, analysis) {
+        // HTML分析逻辑
+        analysis.type = 'template';
     }
 }
 
