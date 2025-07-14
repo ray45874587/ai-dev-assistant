@@ -1799,6 +1799,443 @@ class AIDevAssistant {
         };
         return levels[level] || level;
     }
+
+    /**
+     * 检测项目变更 - 智能增量分析的基础
+     */
+    async detectProjectChanges() {
+        try {
+            const contextCachePath = path.join(this.contextDir, 'project-context-cache.json');
+            const lastScanPath = path.join(this.contextDir, 'last-scan-state.json');
+            
+            // 当前项目状态
+            const currentState = await this.getCurrentProjectState();
+            
+            // 读取上次扫描状态
+            let lastState = {};
+            if (fs.existsSync(lastScanPath)) {
+                try {
+                    lastState = JSON.parse(fs.readFileSync(lastScanPath, 'utf8'));
+                } catch (error) {
+                    console.warn('⚠️ 上次扫描状态读取失败，将执行完整扫描');
+                }
+            }
+            
+            // 检测变更
+            const changes = {
+                hasChanges: false,
+                newFiles: [],
+                modifiedFiles: [],
+                deletedFiles: [],
+                dependencyChanges: false,
+                timestamp: Date.now()
+            };
+            
+            // 比较文件状态
+            const currentFiles = currentState.files || {};
+            const lastFiles = lastState.files || {};
+            
+            // 检测新增文件
+            for (const [filePath, fileInfo] of Object.entries(currentFiles)) {
+                if (!lastFiles[filePath]) {
+                    changes.newFiles.push(filePath);
+                    changes.hasChanges = true;
+                } else if (fileInfo.mtime !== lastFiles[filePath].mtime) {
+                    changes.modifiedFiles.push(filePath);
+                    changes.hasChanges = true;
+                }
+            }
+            
+            // 检测删除文件
+            for (const filePath of Object.keys(lastFiles)) {
+                if (!currentFiles[filePath]) {
+                    changes.deletedFiles.push(filePath);
+                    changes.hasChanges = true;
+                }
+            }
+            
+            // 检测依赖变更
+            const packageJsonPath = path.join(this.projectPath, 'package.json');
+            if (fs.existsSync(packageJsonPath)) {
+                const currentPackageTime = fs.statSync(packageJsonPath).mtime.getTime();
+                const lastPackageTime = lastState.packageJsonTime || 0;
+                if (currentPackageTime > lastPackageTime) {
+                    changes.dependencyChanges = true;
+                    changes.hasChanges = true;
+                }
+            }
+            
+            // 保存当前状态
+            fs.writeFileSync(lastScanPath, JSON.stringify(currentState, null, 2));
+            
+            return changes;
+            
+        } catch (error) {
+            console.warn('变更检测失败，将进行完整分析:', error.message);
+            return {
+                hasChanges: true,
+                newFiles: [],
+                modifiedFiles: [],
+                deletedFiles: [],
+                dependencyChanges: false,
+                timestamp: Date.now()
+            };
+        }
+    }
+
+    /**
+     * 获取当前项目状态
+     */
+    async getCurrentProjectState() {
+        const state = {
+            files: {},
+            packageJsonTime: 0,
+            timestamp: Date.now()
+        };
+        
+        // 扫描项目文件
+        const files = this.analyzer.getAllFiles(this.projectPath);
+        for (const file of files) {
+            try {
+                const stats = fs.statSync(file);
+                state.files[file] = {
+                    mtime: stats.mtime.getTime(),
+                    size: stats.size
+                };
+            } catch (error) {
+                // 文件可能已被删除，跳过
+            }
+        }
+        
+        // 记录package.json时间
+        const packageJsonPath = path.join(this.projectPath, 'package.json');
+        if (fs.existsSync(packageJsonPath)) {
+            state.packageJsonTime = fs.statSync(packageJsonPath).mtime.getTime();
+        }
+        
+        return state;
+    }
+
+    /**
+     * 执行增量上下文更新
+     */
+    async performIncrementalUpdate(changes, forceUpdate = false) {
+        const startTime = Date.now();
+        let processedFiles = 0;
+        let contextSize = 0;
+        let tokensSaved = 0;
+        
+        try {
+            // 读取现有上下文缓存
+            let existingContext = {};
+            const contextCachePath = path.join(this.contextDir, 'project-context-cache.json');
+            
+            if (fs.existsSync(contextCachePath) && !forceUpdate) {
+                try {
+                    existingContext = JSON.parse(fs.readFileSync(contextCachePath, 'utf8'));
+                } catch (error) {
+                    console.warn('⚠️ 现有上下文读取失败，将重建');
+                    existingContext = {};
+                }
+            }
+            
+            // 构建新的上下文
+            const newContext = forceUpdate ? {} : { ...existingContext };
+            
+            // 处理新增和修改的文件
+            const filesToProcess = [...(changes.newFiles || []), ...(changes.modifiedFiles || [])];
+            
+            if (forceUpdate) {
+                // 强制更新 - 重新分析所有重要文件
+                const allFiles = this.analyzer.getAllFiles(this.projectPath);
+                const importantFiles = allFiles.filter(file => this.isImportantFile(file));
+                filesToProcess.push(...importantFiles);
+            }
+            
+            // 增量分析文件
+            for (const filePath of filesToProcess) {
+                try {
+                    if (fs.existsSync(filePath)) {
+                        const fileAnalysis = await this.analyzeFileForContext(filePath);
+                        newContext[filePath] = fileAnalysis;
+                        processedFiles++;
+                        
+                        // 估算节省的tokens
+                        if (existingContext[filePath]) {
+                            tokensSaved += this.estimateTokens(existingContext[filePath]);
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`文件分析失败 ${filePath}:`, error.message);
+                }
+            }
+            
+            // 移除已删除文件的上下文
+            for (const deletedFile of changes.deletedFiles || []) {
+                delete newContext[deletedFile];
+            }
+            
+            // 生成项目摘要
+            const summary = await this.generateProjectSummary(newContext);
+            
+            // 计算上下文大小
+            const contextJson = JSON.stringify(newContext);
+            contextSize = Buffer.byteLength(contextJson, 'utf8');
+            
+            // 保存上下文缓存
+            const fullContext = {
+                summary,
+                files: newContext,
+                metadata: {
+                    lastUpdate: Date.now(),
+                    version: this.version,
+                    totalFiles: Object.keys(newContext).length,
+                    contextSize
+                }
+            };
+            
+            return {
+                context: fullContext,
+                processedFiles,
+                contextSize,
+                tokensSaved,
+                processingTime: Date.now() - startTime,
+                summary
+            };
+            
+        } catch (error) {
+            throw new Error(`增量更新失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 为上下文分析单个文件
+     */
+    async analyzeFileForContext(filePath) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const extension = path.extname(filePath);
+        
+        return {
+            type: this.getFileType(extension),
+            size: content.length,
+            lines: content.split('\n').length,
+            functions: this.extractFunctions(content, extension),
+            classes: this.extractClasses(content, extension),
+            imports: this.extractImports(content, extension),
+            complexity: this.calculateComplexity(content),
+            lastModified: fs.statSync(filePath).mtime.getTime(),
+            summary: this.generateFileSummary(content, extension)
+        };
+    }
+
+    /**
+     * 生成项目摘要
+     */
+    async generateProjectSummary(contextData) {
+        const files = Object.keys(contextData);
+        const totalLines = Object.values(contextData).reduce((sum, file) => sum + (file.lines || 0), 0);
+        const techStack = this.detectTechStack(contextData);
+        
+        // 基础摘要
+        const summary = {
+            totalFiles: files.length,
+            totalLines,
+            techStack,
+            architecturePattern: this.detectArchitecturePattern(contextData),
+            qualityScore: this.calculateOverallQuality(contextData),
+            securityLevel: this.assessSecurityLevel(contextData),
+            keyInsights: this.generateKeyInsights(contextData),
+            recommendations: this.generateRecommendations(contextData)
+        };
+        
+        return summary;
+    }
+
+    /**
+     * 保存上下文缓存
+     */
+    async saveContextCache(context) {
+        const contextCachePath = path.join(this.contextDir, 'project-context-cache.json');
+        fs.writeFileSync(contextCachePath, JSON.stringify(context, null, 2));
+        
+        // 同时保存压缩版本用于快速加载
+        const compressedContext = this.compressContext(context);
+        const compressedPath = path.join(this.contextDir, 'context-summary.json');
+        fs.writeFileSync(compressedPath, JSON.stringify(compressedContext, null, 2));
+    }
+
+    /**
+     * 检查文件是否重要（需要包含在上下文中）
+     */
+    isImportantFile(filePath) {
+        const relativePath = path.relative(this.projectPath, filePath);
+        const extension = path.extname(filePath);
+        
+        // 重要文件类型
+        const importantExtensions = ['.js', '.ts', '.jsx', '.tsx', '.php', '.py', '.java', '.cs', '.cpp', '.h'];
+        
+        // 排除目录
+        const excludeDirs = ['node_modules', '.git', 'vendor', 'build', 'dist', '.ai-context'];
+        
+        return importantExtensions.includes(extension) && 
+               !excludeDirs.some(dir => relativePath.includes(dir));
+    }
+
+    /**
+     * 估算文本的token数量
+     */
+    estimateTokens(text) {
+        const textStr = typeof text === 'string' ? text : JSON.stringify(text);
+        return Math.ceil(textStr.length / 4); // 粗略估算，1 token ≈ 4 字符
+    }
+
+    /**
+     * 压缩上下文以提高性能
+     */
+    compressContext(context) {
+        return {
+            summary: context.summary,
+            metadata: context.metadata,
+            fileCount: Object.keys(context.files || {}).length,
+            lastUpdate: context.metadata?.lastUpdate || Date.now()
+        };
+    }
+
+    // 辅助方法
+    getFileType(extension) {
+        const typeMap = {
+            '.js': 'JavaScript',
+            '.ts': 'TypeScript', 
+            '.jsx': 'React',
+            '.tsx': 'React TypeScript',
+            '.php': 'PHP',
+            '.py': 'Python',
+            '.java': 'Java',
+            '.cs': 'C#',
+            '.cpp': 'C++',
+            '.h': 'C/C++ Header'
+        };
+        return typeMap[extension] || 'Unknown';
+    }
+
+    extractFunctions(content, extension) {
+        // 根据文件类型提取函数
+        const functions = [];
+        if (['.js', '.ts', '.jsx', '.tsx'].includes(extension)) {
+            const matches = content.match(/function\s+(\w+)|(\w+)\s*=\s*function|(\w+)\s*=>\s*/g);
+            if (matches) functions.push(...matches);
+        }
+        return functions.length;
+    }
+
+    extractClasses(content, extension) {
+        const classes = [];
+        if (['.js', '.ts', '.jsx', '.tsx', '.java', '.cs', '.php'].includes(extension)) {
+            const matches = content.match(/class\s+(\w+)/g);
+            if (matches) classes.push(...matches);
+        }
+        return classes.length;
+    }
+
+    extractImports(content, extension) {
+        const imports = [];
+        if (['.js', '.ts', '.jsx', '.tsx'].includes(extension)) {
+            const matches = content.match(/import\s+.*from\s+['"`].*['"`]/g);
+            if (matches) imports.push(...matches);
+        }
+        return imports.length;
+    }
+
+    calculateComplexity(content) {
+        // 简单的复杂度计算
+        const cyclomaticKeywords = ['if', 'else', 'while', 'for', 'switch', 'case', 'catch', '&&', '||'];
+        let complexity = 1;
+        for (const keyword of cyclomaticKeywords) {
+            const matches = content.match(new RegExp(keyword, 'g'));
+            if (matches) complexity += matches.length;
+        }
+        return complexity;
+    }
+
+    generateFileSummary(content, extension) {
+        const lines = content.split('\n').length;
+        const size = content.length;
+        return `${this.getFileType(extension)}文件，${lines}行，${(size/1024).toFixed(1)}KB`;
+    }
+
+    detectTechStack(contextData) {
+        const techStack = new Set();
+        for (const [filePath, fileData] of Object.entries(contextData)) {
+            if (fileData.type) techStack.add(fileData.type);
+        }
+        return Array.from(techStack);
+    }
+
+    detectArchitecturePattern(contextData) {
+        // 简单的架构模式检测
+        const hasClasses = Object.values(contextData).some(file => (file.classes || 0) > 0);
+        const hasManyFunctions = Object.values(contextData).some(file => (file.functions || 0) > 5);
+        
+        if (hasClasses) return '面向对象架构';
+        if (hasManyFunctions) return '函数式架构';
+        return '过程式架构';
+    }
+
+    calculateOverallQuality(contextData) {
+        // 简单的质量评分
+        const totalFiles = Object.keys(contextData).length;
+        const averageComplexity = Object.values(contextData)
+            .reduce((sum, file) => sum + (file.complexity || 0), 0) / totalFiles;
+        
+        return Math.max(100 - averageComplexity * 2, 0);
+    }
+
+    assessSecurityLevel(contextData) {
+        // 简单的安全评估
+        const riskIndicators = ['eval', 'innerHTML', 'document.write', 'exec'];
+        let riskCount = 0;
+        
+        for (const fileData of Object.values(contextData)) {
+            if (fileData.summary && typeof fileData.summary === 'string') {
+                for (const indicator of riskIndicators) {
+                    if (fileData.summary.includes(indicator)) riskCount++;
+                }
+            }
+        }
+        
+        if (riskCount > 5) return '高风险';
+        if (riskCount > 2) return '中等风险';
+        return '低风险';
+    }
+
+    generateKeyInsights(contextData) {
+        const insights = [];
+        const totalFiles = Object.keys(contextData).length;
+        const techStack = this.detectTechStack(contextData);
+        
+        insights.push(`项目包含${totalFiles}个核心文件`);
+        insights.push(`主要技术栈：${techStack.join(', ')}`);
+        
+        if (totalFiles > 50) {
+            insights.push('项目规模较大，建议模块化管理');
+        }
+        
+        return insights;
+    }
+
+    generateRecommendations(contextData) {
+        const recommendations = [];
+        const averageComplexity = Object.values(contextData)
+            .reduce((sum, file) => sum + (file.complexity || 0), 0) / Object.keys(contextData).length;
+        
+        if (averageComplexity > 10) {
+            recommendations.push('代码复杂度较高，建议重构');
+        }
+        
+        recommendations.push('定期运行上下文同步以保持AI分析准确性');
+        
+        return recommendations;
+    }
 }
 
 module.exports = AIDevAssistant;
