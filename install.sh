@@ -674,7 +674,7 @@ show_completion_message() {
     print_message $YELLOW "   推荐在AI对话中引用 .ai-dev-instructions.md 获得最佳体验。"
     echo ""
     print_message $PURPLE "⭐ 如果觉得有用，请给我们一个星标！"
-    print_message $PURPLE "🔗 https://github.com/your-repo/ai-dev-assistant"
+    print_message $PURPLE "🔗 https://github.com/ray45874587/ai-dev-assistant"
     echo ""
 }
 

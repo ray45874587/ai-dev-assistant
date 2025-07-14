@@ -1,7 +1,7 @@
 /**
- * AI开发辅助系统 - 主入口文件
- * AI Development Assistant - Main Entry Point
- * Version: 1.1.0
+ * AI开发辅助系统 v1.2.0
+ * 智能项目分析和文档生成工具
+ * 优化精简版 - 专注AI智能分析，杜绝硬编码
  */
 
 const fs = require('fs');
@@ -9,2500 +9,1795 @@ const path = require('path');
 const IntelligentProjectAnalyzer = require('./project-analyzer');
 const ContextManager = require('./context-manager');
 const AIRulesEngine = require('./ai-rules-engine');
+const SmartDocGenerator = require('./smart-doc-generator');
 
 class AIDevAssistant {
-    constructor(projectPath = '.') {
+    constructor(projectPath = process.cwd()) {
+        this.version = '1.2.0';
         this.projectPath = path.resolve(projectPath);
-        this.systemDir = path.join(this.projectPath, '.ai-dev-assistant');
-        this.configDir = path.join(this.systemDir, 'config');
-        this.contextDir = path.join(this.systemDir, 'context');
         
-        // 初始化组件
+        // 统一目录结构 - 所有系统文件都在"AI助手文档"目录下
+        this.docsDir = path.join(this.projectPath, 'AI助手文档');
+        this.contextDir = path.join(this.docsDir, '.system'); // 系统文件子目录
+        this.currentAnalysis = null;
+        
+        // 确保目录存在
+        this.ensureDirectories();
+        
+        // 核心组件 - 智能化架构
         this.analyzer = new IntelligentProjectAnalyzer(this.projectPath);
-        this.contextManager = new ContextManager(this.projectPath);
-        this.rulesEngine = new AIRulesEngine(this.projectPath);
+        this.contextManager = new ContextManager(this.contextDir, this.projectPath);
+        this.rulesEngine = new AIRulesEngine(this.projectPath, this.docsDir);
+        this.docGenerator = new SmartDocGenerator(this.projectPath);
         
-        this.config = this.loadConfig();
+        // 智能配置初始化
+        this.config = this.adaptiveConfig();
+        this.intelligentFocusAdjustment();
     }
 
     /**
-     * 加载配置
+     * 确保必要的目录存在
      */
-    loadConfig() {
-        const configPath = path.join(this.configDir, 'project-config.json');
-        
-        if (fs.existsSync(configPath)) {
-            try {
-                return JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            } catch (error) {
-                console.warn('配置加载失败:', error.message);
-            }
+    ensureDirectories() {
+        if (!fs.existsSync(this.docsDir)) {
+            fs.mkdirSync(this.docsDir, { recursive: true });
         }
-        
-        return this.getDefaultConfig();
+        if (!fs.existsSync(this.contextDir)) {
+            fs.mkdirSync(this.contextDir, { recursive: true });
+        }
     }
 
     /**
-     * 获取默认配置
+     * 自适应配置 - AI驱动的配置生成
      */
-    getDefaultConfig() {
+    adaptiveConfig() {
+        const projectType = this.analyzer.quickTypeDetection();
         return {
-            version: '1.0.1',
-            name: path.basename(this.projectPath),
-            type: 'unknown',
-            language: 'zh-cn',
-            createdAt: new Date().toISOString(),
-            ai: {
-                focus: ['performance', 'security', 'maintainability'],
-                style: 'enterprise',
-                verbosity: 'normal',
-                autoUpdate: true
+            analysis: {
+                depth: projectType === 'complex' ? 'deep' : 'standard',
+                focus: this.detectProjectFocus(),
+                smartFiltering: true
             },
-            features: {
-                autoContext: true,
-                codeAnalysis: true,
-                docGeneration: true,
-                securityAudit: false,
-                gitHooks: false
+            documentation: {
+                style: 'intelligent',
+                format: 'markdown',
+                aiGenerated: true
             },
-            paths: {
-                source: 'src',
-                tests: 'tests',
-                docs: 'docs',
-                config: 'config'
+            performance: {
+                enableCache: true,
+                maxFileSize: '10MB',
+                smartSkipping: true
             }
         };
     }
 
     /**
-     * 初始化系统
+     * 智能焦点调整 - 根据项目特征自动调整分析重点
      */
-    async initialize() {
-        console.log('🚀 初始化AI开发辅助系统...');
+    intelligentFocusAdjustment() {
+        const projectIndicators = this.analyzer.getProjectIndicators();
         
+        if (projectIndicators.isWebProject) {
+            this.config.analysis.priorityAreas = ['frontend', 'backend', 'assets'];
+        } else if (projectIndicators.isAPIProject) {
+            this.config.analysis.priorityAreas = ['routes', 'controllers', 'models'];
+        } else {
+            this.config.analysis.priorityAreas = ['core', 'modules', 'utils'];
+        }
+    }
+
+    /**
+     * 项目焦点智能检测
+     */
+    detectProjectFocus() {
+        const indicators = this.analyzer.getProjectIndicators();
+        
+        if (indicators.hasDatabase) return 'data-driven';
+        if (indicators.hasAPI) return 'service-oriented';
+        if (indicators.hasUI) return 'user-interface';
+        if (indicators.hasAutomation) return 'automation';
+        
+        return 'general';
+    }
+
+    /**
+     * 主分析方法 - AI驱动的智能分析
+     */
+    async analyze() {
         try {
-            // 1. 分析项目
-            console.log('📊 分析项目结构...');
-            const analysis = await this.analyzer.analyze();
+            console.log(`AI开发辅助系统 v${this.version} - 智能项目分析`);
+            console.log(`项目路径: ${this.projectPath}`);
+            console.log('正在进行AI智能分析...\n');
             
-            // 2. 更新配置
-            await this.updateConfigFromAnalysis(analysis);
+            // AI智能分析
+            this.currentAnalysis = await this.analyzer.analyze();
             
-            // 3. 初始化规则引擎
-            console.log('🔧 配置AI规则引擎...');
-            await this.rulesEngine.updateRules(this.config.type);
+            // 智能上下文管理
+            await this.contextManager.updateContext(this.currentAnalysis);
             
-            // 4. 生成初始上下文
-            console.log('📝 生成项目上下文...');
-            await this.contextManager.updateContext();
-            
-            // 5. 保存分析结果
-            await this.analyzer.saveAnalysis();
-            await this.analyzer.saveReport();
-            
-            console.log('✅ AI开发辅助系统初始化完成！');
-            
-            return {
-                success: true,
-                config: this.config,
-                analysis: analysis,
-                message: '系统已成功初始化'
-            };
+            console.log('分析完成！');
+            return this.currentAnalysis;
             
         } catch (error) {
-            console.error('❌ 初始化失败:', error.message);
+            console.error('分析失败:', error.message);
             throw error;
         }
     }
 
     /**
-     * 基于分析结果更新配置
-     */
-    async updateConfigFromAnalysis(analysis) {
-        // 更新项目类型
-        this.config.type = analysis.project.type;
-        this.config.language = analysis.project.language;
-        
-        // 更新框架信息
-        if (analysis.project.framework.length > 0) {
-            this.config.framework = analysis.project.framework;
-        }
-        
-        // 基于分析结果调整AI焦点
-        this.adjustAIFocus(analysis);
-        
-        // 保存更新的配置
-        await this.saveConfig();
-    }
-
-    /**
-     * 调整AI焦点
-     */
-    adjustAIFocus(analysis) {
-        const focus = [...this.config.ai.focus];
-        
-        // 基于质量评分调整焦点
-        if (analysis.quality.score < 70) {
-            if (!focus.includes('code-quality')) {
-                focus.push('code-quality');
-            }
-        }
-        
-        // 基于安全评估调整焦点
-        if (analysis.security.vulnerabilities.length > 0 || analysis.security.risks.length > 0) {
-            if (!focus.includes('security')) {
-                focus.unshift('security'); // 优先级最高
-            }
-        }
-        
-        // 基于复杂度调整焦点
-        if (analysis.codeMetrics.complexity === 'high') {
-            if (!focus.includes('refactoring')) {
-                focus.push('refactoring');
-            }
-        }
-        
-        // 基于项目类型调整焦点
-        if (analysis.project.type === 'next-js' || analysis.project.framework.includes('React')) {
-            if (!focus.includes('performance')) {
-                focus.push('performance');
-            }
-            if (!focus.includes('user-experience')) {
-                focus.push('user-experience');
-            }
-        }
-        
-        this.config.ai.focus = focus;
-    }
-
-    /**
-     * 保存配置
-     */
-    async saveConfig() {
-        const configPath = path.join(this.configDir, 'project-config.json');
-        
-        try {
-            // 确保目录存在
-            if (!fs.existsSync(this.configDir)) {
-                fs.mkdirSync(this.configDir, { recursive: true });
-            }
-            
-            fs.writeFileSync(configPath, JSON.stringify(this.config, null, 2));
-            console.log('📝 配置已保存');
-        } catch (error) {
-            console.error('配置保存失败:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * 更新系统
-     */
-    async update() {
-        console.log('🔄 更新AI开发辅助系统...');
-        
-        try {
-            // 1. 重新分析项目
-            const analysis = await this.analyzer.analyze();
-            
-            // 2. 更新上下文
-            await this.contextManager.updateContext();
-            
-            // 3. 更新配置
-            await this.updateConfigFromAnalysis(analysis);
-            
-            // 4. 保存结果
-            await this.analyzer.saveAnalysis();
-            await this.analyzer.saveReport();
-            
-            console.log('✅ 系统更新完成');
-            
-            return {
-                success: true,
-                timestamp: new Date().toISOString(),
-                changes: this.getSystemChanges(analysis)
-            };
-            
-        } catch (error) {
-            console.error('❌ 系统更新失败:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * 获取系统变更
-     */
-    getSystemChanges(analysis) {
-        const changes = [];
-        
-        // 检查是否有新的依赖
-        if (analysis.dependencies.production.length !== this.config.lastDependencyCount) {
-            changes.push({
-                type: 'dependencies',
-                message: `依赖数量变化: ${analysis.dependencies.production.length}`
-            });
-            this.config.lastDependencyCount = analysis.dependencies.production.length;
-        }
-        
-        // 检查复杂度变化
-        if (analysis.codeMetrics.complexity !== this.config.lastComplexity) {
-            changes.push({
-                type: 'complexity',
-                message: `复杂度变化: ${this.config.lastComplexity} -> ${analysis.codeMetrics.complexity}`
-            });
-            this.config.lastComplexity = analysis.codeMetrics.complexity;
-        }
-        
-        return changes;
-    }
-
-    /**
-     * 分析代码
-     */
-    async analyzeCode(filePath = null) {
-        console.log('🔍 分析代码...');
-        
-        try {
-            if (filePath) {
-                // 分析单个文件
-                return await this.analyzeSingleFile(filePath);
-            } else {
-                // 分析整个项目
-                return await this.analyzer.analyze();
-            }
-        } catch (error) {
-            console.error('代码分析失败:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * 分析单个文件
-     */
-    async analyzeSingleFile(filePath) {
-        if (!fs.existsSync(filePath)) {
-            throw new Error(`文件不存在: ${filePath}`);
-        }
-        
-        const content = fs.readFileSync(filePath, 'utf8');
-        const violations = await this.rulesEngine.validateCode(filePath, content);
-        const suggestions = await this.rulesEngine.generateSuggestions(filePath, content);
-        
-        return {
-            file: filePath,
-            violations,
-            suggestions,
-            metrics: {
-                lines: content.split('\n').length,
-                size: content.length,
-                complexity: this.analyzer.assessComponentComplexity ? 
-                    this.analyzer.assessComponentComplexity(content) : 'unknown'
-            }
-        };
-    }
-
-    /**
-     * 生成文档
+     * 智能生成项目文档
      */
     async generateDocs() {
-        console.log('📚 生成项目文档...');
-        
         try {
-            // 先进行完整的项目分析
-            const analysis = await this.analyzer.analyze();
-            
-            // 创建文档目录
-            const aiDocsDir = path.join(this.projectPath, 'AI助手文档');
-            const aiDocsDirEn = path.join(this.projectPath, 'AIAssistantDocs');
-            
-            // 优先使用中文目录名，如果已有英文目录则使用英文
-            let targetDocsDir = aiDocsDir;
-            if (fs.existsSync(aiDocsDirEn) && !fs.existsSync(aiDocsDir)) {
-                targetDocsDir = aiDocsDirEn;
-            } else if (!fs.existsSync(aiDocsDir) && !fs.existsSync(aiDocsDirEn)) {
-                targetDocsDir = aiDocsDir; // 默认使用中文
+            if (!this.currentAnalysis) {
+                console.log('正在进行项目分析...');
+                await this.analyze();
             }
             
-            // 确保文档目录存在
-            if (!fs.existsSync(targetDocsDir)) {
-                fs.mkdirSync(targetDocsDir, { recursive: true });
-                console.log(`📁 创建文档目录: ${path.basename(targetDocsDir)}/`);
+            console.log('正在智能生成项目文档...');
+            
+            // 使用统一的文档目录
+            const generatedDocs = await this.docGenerator.generateAllDocs(
+                this.currentAnalysis, 
+                this.docsDir
+            );
+            
+            if (generatedDocs.length > 0) {
+                console.log(`\n成功生成 ${generatedDocs.length} 个文档:`);
+                generatedDocs.forEach(doc => console.log(`- ${doc}`));
+                
+                this.displayAnalysisSummary();
+                
+                return {
+                    success: true,
+                    files: generatedDocs,
+                    docsDirectory: 'AI助手文档'
+                };
+            } else {
+                console.warn('未生成任何文档');
+                return { success: false, files: [] };
             }
-            
-            // 生成多种文档
-            const generatedFiles = [];
-            
-            // 1. 生成项目README（如果不存在）
-            const readmePath = await this.generateProjectReadme(analysis);
-            if (readmePath) {
-                generatedFiles.push(readmePath);
-            }
-            
-            // 2. 生成项目分析报告（在docs目录）
-            const analysisReportPath = await this.generateProjectAnalysisReport(analysis, targetDocsDir);
-            if (analysisReportPath) {
-                generatedFiles.push(analysisReportPath);
-            }
-            
-            // 3. 生成API文档（如果是后端项目）
-            if (this.isBackendProject(analysis)) {
-                const apiDocPath = await this.generateApiDocs(analysis, targetDocsDir);
-                if (apiDocPath) {
-                    generatedFiles.push(apiDocPath);
-                }
-            }
-            
-            // 4. 生成架构文档
-            const archDocPath = await this.generateArchitectureDocs(analysis, targetDocsDir);
-            if (archDocPath) {
-                generatedFiles.push(archDocPath);
-            }
-            
-            // 5. 生成开发指南
-            const devGuidePath = await this.generateDevelopmentGuide(analysis, targetDocsDir);
-            if (devGuidePath) {
-                generatedFiles.push(devGuidePath);
-            }
-            
-            // 6. 生成部署指南
-            const deployGuidePath = await this.generateDeploymentGuide(analysis, targetDocsDir);
-            if (deployGuidePath) {
-                generatedFiles.push(deployGuidePath);
-            }
-            
-            // 7. 生成文档索引
-            const indexPath = await this.generateDocsIndex(analysis, targetDocsDir, generatedFiles);
-            if (indexPath) {
-                generatedFiles.push(indexPath);
-            }
-            
-            // 8. 生成AI指令文档（保持在根目录，供AI助手使用）
-            await this.rulesEngine.generateInstructions();
-            
-            // 9. 内部分析报告（保存到AI系统目录）
-            await this.analyzer.saveReport();
-            const overview = await this.contextManager.getContextSummary();
-            
-            console.log('✅ 文档生成完成');
-            
-            return {
-                success: true,
-                files: generatedFiles,
-                docsDirectory: path.basename(targetDocsDir)
-            };
             
         } catch (error) {
             console.error('文档生成失败:', error.message);
-            throw error;
+            return { success: false, error: error.message };
         }
     }
 
     /**
-     * 判断是否为后端项目
+     * 显示分析摘要
      */
-    isBackendProject(analysis) {
-        const backendFrameworks = ['Express', 'Koa', 'Nest.js', 'Fastify'];
-        return analysis.project.framework.some(fw => backendFrameworks.includes(fw)) ||
-               analysis.project.type === 'node' ||
-               analysis.project.language === 'python';
-    }
-
-    /**
-     * 生成项目README
-     */
-    async generateProjectReadme(analysis) {
-        const readmePath = path.join(this.projectPath, 'README.md');
-        
-        // 如果已存在README，不覆盖
-        if (fs.existsSync(readmePath)) {
-            console.log('ℹ️ README.md已存在，跳过生成');
-            return null;
-        }
-        
-        const content = this.generateReadmeContent(analysis);
-        
-        try {
-            fs.writeFileSync(readmePath, content);
-            console.log('✅ 项目README已生成');
-            return 'README.md';
-        } catch (error) {
-            console.warn('README生成失败:', error.message);
-            return null;
-        }
-    }
-
-    /**
-     * 生成README内容
-     */
-    generateReadmeContent(analysis) {
-        const lines = [];
-        
-        lines.push(`# ${analysis.metadata.name}\n`);
-        
-        // 项目描述
-        lines.push('## 📋 项目概述\n');
-        lines.push(`- **项目类型**: ${analysis.project.type}`);
-        lines.push(`- **主要语言**: ${analysis.project.language}`);
-        if (analysis.project.framework.length > 0) {
-            lines.push(`- **技术框架**: ${analysis.project.framework.join(', ')}`);
-        }
-        lines.push(`- **包管理器**: ${analysis.project.packageManager}`);
-        lines.push('');
-        
-        // 项目结构
-        lines.push('## 📁 项目结构\n');
-        lines.push('```');
-        this.generateStructureTree(analysis.structure.directories, lines, '');
-        lines.push('```\n');
-        
-        // 快速开始
-        lines.push('## 🚀 快速开始\n');
-        this.generateQuickStartGuide(analysis, lines);
-        
-        // 开发指南
-        lines.push('## 💻 开发指南\n');
-        lines.push('### 环境要求\n');
-        if (analysis.project.type === 'node') {
-            lines.push('- Node.js >= 14.0.0');
-            if (analysis.project.packageManager === 'npm') {
-                lines.push('- npm >= 6.0.0');
-            } else if (analysis.project.packageManager === 'yarn') {
-                lines.push('- Yarn >= 1.22.0');
-            }
-        } else if (analysis.project.language === 'python') {
-            lines.push('- Python >= 3.8');
-            lines.push('- pip >= 21.0');
-        }
-        lines.push('');
-        
-        // 质量指标
-        if (analysis.quality.score) {
-            lines.push('## 📊 代码质量\n');
-            lines.push(`- **质量评分**: ${analysis.quality.score}/100`);
-            lines.push(`- **文件总数**: ${analysis.codeMetrics.totalFiles}`);
-            lines.push(`- **代码行数**: ${analysis.codeMetrics.totalLines}`);
-            lines.push(`- **复杂度**: ${analysis.codeMetrics.complexity}`);
-            lines.push('');
-        }
-        
-        // 贡献指南
-        lines.push('## 🤝 贡献指南\n');
-        lines.push('1. Fork 本仓库');
-        lines.push('2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)');
-        lines.push('3. 提交更改 (`git commit -m \'Add some AmazingFeature\'`)');
-        lines.push('4. 推送到分支 (`git push origin feature/AmazingFeature`)');
-        lines.push('5. 打开 Pull Request\n');
-        
-        // 许可证
-        lines.push('## 📄 许可证\n');
-        lines.push('本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详细信息。\n');
-        
-        lines.push('---\n*此文档由 AI 开发辅助系统自动生成*');
-        
-        return lines.join('\n');
-    }
-
-    /**
-     * 生成结构树
-     */
-    generateStructureTree(directories, lines, prefix) {
-        const entries = Object.entries(directories);
-        entries.forEach(([name, info], index) => {
-            const isLast = index === entries.length - 1;
-            const symbol = isLast ? '└── ' : '├── ';
-            lines.push(`${prefix}${symbol}${name}`);
-            
-            if (info.type === 'directory' && info.children) {
-                const newPrefix = prefix + (isLast ? '    ' : '│   ');
-                this.generateStructureTree(info.children, lines, newPrefix);
-            }
-        });
-    }
-
-    /**
-     * 生成快速开始指南
-     */
-    generateQuickStartGuide(analysis, lines) {
-        lines.push('### 安装依赖\n');
-        
-        if (analysis.project.type === 'node') {
-            if (analysis.project.packageManager === 'yarn') {
-                lines.push('```bash');
-                lines.push('yarn install');
-                lines.push('```\n');
-            } else {
-                lines.push('```bash');
-                lines.push('npm install');
-                lines.push('```\n');
-            }
-            
-            lines.push('### 运行项目\n');
-            lines.push('```bash');
-            if (analysis.project.packageManager === 'yarn') {
-                lines.push('yarn start');
-            } else {
-                lines.push('npm start');
-            }
-            lines.push('```\n');
-            
-            lines.push('### 运行测试\n');
-            lines.push('```bash');
-            if (analysis.project.packageManager === 'yarn') {
-                lines.push('yarn test');
-            } else {
-                lines.push('npm test');
-            }
-            lines.push('```\n');
-            
-        } else if (analysis.project.language === 'python') {
-            lines.push('```bash');
-            lines.push('# 创建虚拟环境');
-            lines.push('python -m venv venv');
-            lines.push('');
-            lines.push('# 激活虚拟环境');
-            lines.push('source venv/bin/activate  # Linux/Mac');
-            lines.push('venv\\Scripts\\activate     # Windows');
-            lines.push('');
-            lines.push('# 安装依赖');
-            lines.push('pip install -r requirements.txt');
-            lines.push('```\n');
-        }
-    }
-
-    /**
-     * 生成API文档
-     */
-    async generateApiDocs(analysis, targetDir = null) {
-        const apiDocPath = path.join(targetDir || this.contextDir, 'API文档.md');
-        
-        try {
-            const content = this.generateApiContent(analysis);
-            fs.writeFileSync(apiDocPath, content);
-            console.log('✅ API文档已生成');
-            return path.relative(this.projectPath, apiDocPath);
-        } catch (error) {
-            console.warn('API文档生成失败:', error.message);
-            return null;
-        }
-    }
-
-    /**
-     * 生成API文档内容
-     */
-    generateApiContent(analysis) {
-        const lines = [];
-        
-        lines.push('# 📋 API 文档\n');
-        lines.push(`**项目**: ${analysis.metadata.name}`);
-        lines.push(`**生成时间**: ${new Date().toISOString()}\n`);
-        
-        lines.push('## 🌐 基础信息\n');
-        lines.push(`- **项目类型**: ${analysis.project.type}`);
-        lines.push(`- **技术框架**: ${analysis.project.framework.join(', ')}`);
-        lines.push('');
-        
-        // 这里可以扫描代码生成实际的API路由
-        lines.push('## 📌 API 端点\n');
-        lines.push('> 注意：以下是基于代码分析的API端点，请根据实际情况调整\n');
-        
-        // TODO: 实际扫描代码获取API路由
-        lines.push('### 基础路由\n');
-        lines.push('| 方法 | 路径 | 描述 |');
-        lines.push('|------|------|------|');
-        lines.push('| GET | `/health` | 健康检查 |');
-        lines.push('| GET | `/api/status` | 服务状态 |');
-        lines.push('');
-        
-        lines.push('## 🔧 请求/响应格式\n');
-        lines.push('### 标准响应格式\n');
-        lines.push('```json');
-        lines.push('{');
-        lines.push('  "success": true,');
-        lines.push('  "data": {},');
-        lines.push('  "message": "操作成功",');
-        lines.push('  "timestamp": "2023-01-01T00:00:00Z"');
-        lines.push('}');
-        lines.push('```\n');
-        
-        lines.push('---\n*此文档由 AI 开发辅助系统自动生成*');
-        
-        return lines.join('\n');
-    }
-
-    /**
-     * 生成架构文档
-     */
-    async generateArchitectureDocs(analysis, targetDir = null) {
-        const archDocPath = path.join(targetDir || this.contextDir, '架构文档.md');
-        
-        try {
-            const content = this.generateArchitectureContent(analysis);
-            fs.writeFileSync(archDocPath, content);
-            console.log('✅ 架构文档已生成');
-            return path.relative(this.projectPath, archDocPath);
-        } catch (error) {
-            console.warn('架构文档生成失败:', error.message);
-            return null;
-        }
-    }
-
-    /**
-     * 生成架构文档内容
-     */
-    generateArchitectureContent(analysis) {
-        const lines = [];
-        
-        lines.push('# 🏗️ 项目架构\n');
-        lines.push(`**项目**: ${analysis.metadata.name}`);
-        lines.push(`**架构分析时间**: ${new Date().toISOString()}\n`);
-        
-        lines.push('## 🎯 架构概览\n');
-        lines.push(`- **项目类型**: ${analysis.project.type}`);
-        lines.push(`- **主要语言**: ${analysis.project.language}`);
-        lines.push(`- **技术栈**: ${analysis.project.framework.join(', ')}`);
-        lines.push(`- **架构模式**: ${analysis.structure.patterns.join(', ') || '待识别'}\n`);
-        
-        lines.push('## 📁 目录结构\n');
-        this.generateDirectoryDescription(analysis.structure.directories, lines);
-        
-        lines.push('## 🔗 依赖关系\n');
-        if (analysis.dependencies.production.length > 0) {
-            lines.push('### 生产依赖\n');
-            analysis.dependencies.production.forEach(dep => {
-                lines.push(`- **${dep.name}**: ${dep.version || 'latest'}`);
-            });
-            lines.push('');
-        }
-        
-        lines.push('## 📊 复杂度分析\n');
-        lines.push(`- **总文件数**: ${analysis.codeMetrics.totalFiles}`);
-        lines.push(`- **代码行数**: ${analysis.codeMetrics.totalLines}`);
-        lines.push(`- **复杂度等级**: ${analysis.codeMetrics.complexity}`);
-        lines.push('');
-        
-        lines.push('## 🔐 安全考虑\n');
-        if (analysis.security.risks.length > 0) {
-            lines.push('### 识别的风险\n');
-            analysis.security.risks.forEach(risk => {
-                lines.push(`- ⚠️ ${risk}`);
-            });
-            lines.push('');
-        }
-        
-        if (analysis.security.recommendations.length > 0) {
-            lines.push('### 安全建议\n');
-            analysis.security.recommendations.forEach(rec => {
-                lines.push(`- 🔒 ${rec}`);
-            });
-            lines.push('');
-        }
-        
-        lines.push('## 🚀 性能考虑\n');
-        lines.push('### 性能优化建议\n');
-        if (analysis.project.type === 'node') {
-            lines.push('- 使用 PM2 进行进程管理');
-            lines.push('- 实施缓存策略');
-            lines.push('- 优化数据库查询');
-        }
-        if (analysis.project.framework.includes('React') || analysis.project.framework.includes('Next.js')) {
-            lines.push('- 实施代码分割');
-            lines.push('- 优化图片加载');
-            lines.push('- 使用 CDN');
-        }
-        lines.push('');
-        
-        lines.push('---\n*此文档由 AI 开发辅助系统自动生成*');
-        
-        return lines.join('\n');
-    }
-
-    /**
-     * 生成目录描述
-     */
-    generateDirectoryDescription(directories, lines) {
-        const commonDescriptions = {
-            'src': '源代码目录',
-            'lib': '库文件目录',
-            'components': 'React组件目录',
-            'pages': '页面文件目录',
-            'api': 'API接口目录',
-            'utils': '工具函数目录',
-            'hooks': 'React Hooks目录',
-            'services': '服务层目录',
-            'models': '数据模型目录',
-            'controllers': '控制器目录',
-            'middleware': '中间件目录',
-            'routes': '路由目录',
-            'config': '配置文件目录',
-            'public': '静态资源目录',
-            'assets': '资源文件目录',
-            'styles': '样式文件目录',
-            'tests': '测试文件目录',
-            'docs': '文档目录'
-        };
-        
-        Object.entries(directories).forEach(([name, info]) => {
-            if (info.type === 'directory') {
-                const description = commonDescriptions[name] || '项目目录';
-                lines.push(`- **${name}/**: ${description}`);
-            }
-        });
-        lines.push('');
-    }
-
-    /**
-     * 生成开发指南
-     */
-    async generateDevelopmentGuide(analysis, targetDir = null) {
-        const devGuidePath = path.join(targetDir || this.contextDir, '开发指南.md');
-        
-        try {
-            const content = this.generateDevelopmentContent(analysis);
-            fs.writeFileSync(devGuidePath, content);
-            console.log('✅ 开发指南已生成');
-            return path.relative(this.projectPath, devGuidePath);
-        } catch (error) {
-            console.warn('开发指南生成失败:', error.message);
-            return null;
-        }
-    }
-
-    /**
-     * 生成开发指南内容
-     */
-    generateDevelopmentContent(analysis) {
-        const lines = [];
-        
-        lines.push('# 💻 开发指南\n');
-        lines.push(`**项目**: ${analysis.metadata.name}`);
-        lines.push(`**更新时间**: ${new Date().toISOString()}\n`);
-        
-        lines.push('## 🚀 开发环境设置\n');
-        this.generateDevEnvironmentSetup(analysis, lines);
-        
-        lines.push('## 📋 开发规范\n');
-        this.generateCodingStandards(analysis, lines);
-        
-        lines.push('## 🔧 常用命令\n');
-        this.generateCommonCommands(analysis, lines);
-        
-        lines.push('## 🧪 测试指南\n');
-        this.generateTestingGuide(analysis, lines);
-        
-        lines.push('## 📦 构建和部署\n');
-        this.generateBuildGuide(analysis, lines);
-        
-        lines.push('## 🐛 调试技巧\n');
-        this.generateDebuggingTips(analysis, lines);
-        
-        lines.push('---\n*此文档由 AI 开发辅助系统自动生成*');
-        
-        return lines.join('\n');
-    }
-
-    /**
-     * 生成开发环境设置指南
-     */
-    generateDevEnvironmentSetup(analysis, lines) {
-        lines.push('### 前置要求\n');
-        
-        if (analysis.project.type === 'node') {
-            lines.push('- Node.js >= 14.0.0');
-            lines.push('- npm >= 6.0.0 或 Yarn >= 1.22.0');
-        } else if (analysis.project.language === 'python') {
-            lines.push('- Python >= 3.8');
-            lines.push('- pip >= 21.0');
-        }
-        
-        lines.push('- Git >= 2.0');
-        lines.push('- 代码编辑器（推荐 VS Code）\n');
-        
-        lines.push('### 项目设置\n');
-        lines.push('```bash');
-        lines.push('# 克隆项目');
-        lines.push('git clone <repository-url>');
-        lines.push(`cd ${analysis.metadata.name}`);
-        lines.push('');
-        
-        if (analysis.project.type === 'node') {
-            lines.push('# 安装依赖');
-            lines.push(analysis.project.packageManager === 'yarn' ? 'yarn install' : 'npm install');
-        } else if (analysis.project.language === 'python') {
-            lines.push('# 创建虚拟环境');
-            lines.push('python -m venv venv');
-            lines.push('source venv/bin/activate');
-            lines.push('pip install -r requirements.txt');
-        }
-        
-        lines.push('```\n');
-    }
-
-    /**
-     * 生成编码规范
-     */
-    generateCodingStandards(analysis, lines) {
-        lines.push('### 代码风格\n');
-        
-        if (analysis.project.language === 'javascript' || analysis.project.language === 'typescript') {
-            lines.push('- 使用 ESLint 进行代码检查');
-            lines.push('- 使用 Prettier 进行代码格式化');
-            lines.push('- 遵循 Airbnb JavaScript 风格指南');
-        } else if (analysis.project.language === 'python') {
-            lines.push('- 遵循 PEP 8 代码风格');
-            lines.push('- 使用 Black 进行代码格式化');
-            lines.push('- 使用 pylint 进行代码检查');
-        }
-        
-        lines.push('');
-        
-        lines.push('### 提交规范\n');
-        lines.push('- 使用语义化提交信息（Semantic Commit Messages）');
-        lines.push('- 格式：`type(scope): description`');
-        lines.push('- 类型：feat, fix, docs, style, refactor, test, chore');
-        lines.push('');
-    }
-
-    /**
-     * 生成常用命令
-     */
-    generateCommonCommands(analysis, lines) {
-        lines.push('```bash');
-        
-        if (analysis.project.type === 'node') {
-            const pm = analysis.project.packageManager === 'yarn' ? 'yarn' : 'npm';
-            lines.push('# 开发模式');
-            lines.push(`${pm} run dev`);
-            lines.push('');
-            lines.push('# 构建项目');
-            lines.push(`${pm} run build`);
-            lines.push('');
-            lines.push('# 运行测试');
-            lines.push(`${pm} test`);
-            lines.push('');
-            lines.push('# 代码检查');
-            lines.push(`${pm} run lint`);
-        }
-        
-        lines.push('```\n');
-    }
-
-    /**
-     * 生成测试指南
-     */
-    generateTestingGuide(analysis, lines) {
-        if (!this.hasTestsInAnalysis(analysis)) {
-            lines.push('> ⚠️ 当前项目缺少测试文件，建议添加测试\n');
-        }
-        
-        lines.push('### 测试策略\n');
-        lines.push('- **单元测试**: 测试独立的函数和组件');
-        lines.push('- **集成测试**: 测试模块间的交互');
-        lines.push('- **端到端测试**: 测试完整的用户流程\n');
-        
-        if (analysis.project.type === 'node') {
-            lines.push('### 推荐测试工具\n');
-            lines.push('- **Jest**: 单元测试框架');
-            lines.push('- **Supertest**: HTTP 接口测试');
-            if (analysis.project.framework.includes('React')) {
-                lines.push('- **React Testing Library**: React 组件测试');
-            }
-            lines.push('');
-        }
-    }
-
-    /**
-     * 生成构建指南
-     */
-    generateBuildGuide(analysis, lines) {
-        lines.push('### 本地构建\n');
-        lines.push('```bash');
-        
-        if (analysis.project.type === 'node') {
-            const pm = analysis.project.packageManager === 'yarn' ? 'yarn' : 'npm';
-            lines.push(`${pm} run build`);
-        }
-        
-        lines.push('```\n');
-        
-        lines.push('### 生产部署\n');
-        lines.push('1. 确保所有测试通过');
-        lines.push('2. 构建生产版本');
-        lines.push('3. 配置环境变量');
-        lines.push('4. 部署到目标环境\n');
-    }
-
-    /**
-     * 生成调试技巧
-     */
-    generateDebuggingTips(analysis, lines) {
-        lines.push('### 常用调试方法\n');
-        
-        if (analysis.project.type === 'node') {
-            lines.push('- 使用 `console.log()` 进行基础调试');
-            lines.push('- 使用 Node.js inspector 进行深度调试');
-            lines.push('- VS Code 断点调试配置');
-        }
-        
-        lines.push('- 浏览器开发者工具');
-        lines.push('- 网络请求分析');
-        lines.push('- 性能分析工具\n');
-    }
-
-    /**
-     * 检查分析结果中是否有测试
-     */
-    hasTestsInAnalysis(analysis) {
-        return Object.keys(analysis.structure.directories).some(dir => 
-            dir.includes('test') || dir.includes('spec') || dir.includes('__tests__')
-        );
-    }
-
-    /**
-     * 安全审计
-     */
-    async securityAudit() {
-        console.log('🛡️ 执行安全审计...');
-        
-        try {
-            const analysis = await this.analyzer.analyze();
-            const securityIssues = [];
-            
-            // 收集安全问题
-            if (analysis.security.vulnerabilities.length > 0) {
-                securityIssues.push(...analysis.security.vulnerabilities.map(v => ({
-                    type: 'vulnerability',
-                    severity: 'high',
-                    message: v
-                })));
-            }
-            
-            if (analysis.security.risks.length > 0) {
-                securityIssues.push(...analysis.security.risks.map(r => ({
-                    type: 'risk',
-                    severity: 'medium',
-                    message: r
-                })));
-            }
-            
-            // 生成安全报告
-            const report = this.generateSecurityReport(securityIssues, analysis.security.recommendations);
-            
-            // 保存报告
-            const reportPath = path.join(this.contextDir, 'security-report.md');
-            fs.writeFileSync(reportPath, report);
-            
-            console.log('✅ 安全审计完成');
-            
-            return {
-                success: true,
-                issues: securityIssues,
-                recommendations: analysis.security.recommendations,
-                reportPath
-            };
-            
-        } catch (error) {
-            console.error('安全审计失败:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * 生成安全报告
-     */
-    generateSecurityReport(issues, recommendations) {
-        const lines = [];
-        
-        lines.push('# 🛡️ 安全审计报告\n');
-        lines.push(`**审计时间**: ${new Date().toISOString()}`);
-        lines.push(`**项目**: ${this.config.name}\n`);
-        
-        // 问题概述
-        lines.push('## 📊 问题概述\n');
-        lines.push(`- 发现问题: ${issues.length}`);
-        const highSeverity = issues.filter(i => i.severity === 'high').length;
-        const mediumSeverity = issues.filter(i => i.severity === 'medium').length;
-        lines.push(`- 高风险: ${highSeverity}`);
-        lines.push(`- 中风险: ${mediumSeverity}\n`);
-        
-        // 详细问题
-        if (issues.length > 0) {
-            lines.push('## ⚠️ 发现的问题\n');
-            issues.forEach((issue, index) => {
-                const severityEmoji = issue.severity === 'high' ? '🚨' : '⚠️';
-                lines.push(`${index + 1}. ${severityEmoji} **${issue.type}**: ${issue.message}`);
-            });
-            lines.push('');
-        }
-        
-        // 修复建议
-        if (recommendations.length > 0) {
-            lines.push('## 🔧 修复建议\n');
-            recommendations.forEach((rec, index) => {
-                lines.push(`${index + 1}. ${rec}`);
-            });
-            lines.push('');
-        }
-        
-        lines.push('---\n*由AI开发辅助系统生成*');
-        
-        return lines.join('\n');
-    }
-
-    /**
-     * 设置开发焦点
-     */
-    async setFocus(area) {
-        console.log(`🎯 设置开发焦点: ${area}`);
-        
-        try {
-            const focusPath = path.join(this.configDir, 'dev-focus.json');
-            let focusConfig = {
-                currentFocus: area,
-                priorities: [area],
-                activeFeatures: this.config.features ? Object.keys(this.config.features).filter(f => this.config.features[f]) : [],
-                lastUpdated: new Date().toISOString()
-            };
-            
-            // 如果配置已存在，更新它
-            if (fs.existsSync(focusPath)) {
-                const existing = JSON.parse(fs.readFileSync(focusPath, 'utf8'));
-                focusConfig = {
-                    ...existing,
-                    currentFocus: area,
-                    lastUpdated: new Date().toISOString()
-                };
-                
-                // 添加到优先级列表（如果还没有）
-                if (!focusConfig.priorities.includes(area)) {
-                    focusConfig.priorities.unshift(area);
-                }
-            }
-            
-            fs.writeFileSync(focusPath, JSON.stringify(focusConfig, null, 2));
-            
-            // 基于焦点更新AI规则
-            await this.updateRulesForFocus(area);
-            
-            console.log(`✅ 开发焦点已设置为: ${area}`);
-            
-            return {
-                success: true,
-                focus: area,
-                config: focusConfig
-            };
-            
-        } catch (error) {
-            console.error('设置开发焦点失败:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * 基于焦点更新规则
-     */
-    async updateRulesForFocus(area) {
-        const customRules = {};
-        
-        switch (area) {
-            case 'performance':
-                customRules.aiInstructions = {
-                    ...this.rulesEngine.rules.aiInstructions,
-                    performance: '重点关注性能优化，包括代码效率、内存使用和响应时间'
-                };
-                break;
-            case 'security':
-                customRules.aiInstructions = {
-                    ...this.rulesEngine.rules.aiInstructions,
-                    security: '优先考虑安全性，严格检查输入验证、身份认证和数据保护'
-                };
-                break;
-            case 'testing':
-                customRules.aiInstructions = {
-                    ...this.rulesEngine.rules.aiInstructions,
-                    testing: '强调测试驱动开发，确保代码质量和可靠性'
-                };
-                break;
-        }
-        
-        if (Object.keys(customRules).length > 0) {
-            await this.rulesEngine.updateRules(this.config.type, customRules);
-        }
-    }
-
-    /**
-     * 获取系统状态
-     */
-    getStatus() {
-        const status = {
-            version: '1.1.0',
-            project: {
-                name: this.config.name,
-                type: this.config.type,
-                language: this.config.language
-            },
-            system: {
-                initialized: fs.existsSync(this.systemDir),
-                configExists: fs.existsSync(path.join(this.configDir, 'project-config.json')),
-                rulesExists: fs.existsSync(path.join(this.projectPath, '.ai-dev-assistant-rules.json')),
-                contextExists: fs.existsSync(this.contextDir)
-            },
-            features: this.config.features,
-            lastUpdate: this.config.lastUpdate || null,
-            health: 'healthy'
-        };
-        
-        // 检查系统健康状态
-        const requiredFiles = [
-            path.join(this.configDir, 'project-config.json'),
-            path.join(this.projectPath, '.ai-dev-assistant-rules.json'),
-            path.join(this.projectPath, '.ai-dev-instructions.md')
-        ];
-        
-        const missingFiles = requiredFiles.filter(file => !fs.existsSync(file));
-        if (missingFiles.length > 0) {
-            status.health = 'warning';
-            status.issues = [`缺少文件: ${missingFiles.map(f => path.basename(f)).join(', ')}`];
-        }
-        
-        return status;
-    }
-
-    /**
-     * 清理系统
-     */
-    async cleanup() {
-        console.log('🧹 清理AI开发辅助系统...');
-        
-        try {
-            const filesToRemove = [
-                this.systemDir,
-                path.join(this.projectPath, '.ai-dev-assistant-rules.json'),
-                path.join(this.projectPath, '.ai-dev-instructions.md')
-            ];
-            
-            filesToRemove.forEach(item => {
-                if (fs.existsSync(item)) {
-                    if (fs.statSync(item).isDirectory()) {
-                        fs.rmSync(item, { recursive: true, force: true });
-                    } else {
-                        fs.unlinkSync(item);
-                    }
-                    console.log(`🗑️ 已删除: ${path.basename(item)}`);
-                }
-            });
-            
-            console.log('✅ 系统清理完成');
-            
-            return { success: true };
-            
-        } catch (error) {
-            console.error('系统清理失败:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * 生成项目分析报告（在docs目录）
-     */
-    async generateProjectAnalysisReport(analysis, targetDir) {
-        const reportPath = path.join(targetDir, '项目分析报告.md');
-        
-        try {
-            const content = this.generateDetailedAnalysisContent(analysis);
-            fs.writeFileSync(reportPath, content);
-            console.log('✅ 项目分析报告已生成');
-            return path.relative(this.projectPath, reportPath);
-        } catch (error) {
-            console.warn('项目分析报告生成失败:', error.message);
-            return null;
-        }
-    }
-
-    /**
-     * 生成详细分析内容
-     */
-    generateDetailedAnalysisContent(analysis) {
-        const lines = [];
-        
-        lines.push(`# 📊 ${analysis.metadata.name} - 项目分析报告\n`);
-        lines.push(`**分析时间**: ${new Date().toISOString()}`);
-        lines.push(`**项目路径**: ${analysis.metadata.path}`);
-        lines.push(`**系统版本**: ${analysis.metadata.version}\n`);
-        
-        // 项目概览
-        lines.push('## 🎯 项目概览\n');
-        lines.push(`- **项目名称**: ${analysis.metadata.name}`);
-        lines.push(`- **项目类型**: ${analysis.project.type}`);
-        lines.push(`- **主要语言**: ${analysis.project.language}`);
-        lines.push(`- **技术框架**: ${analysis.project.framework.join(', ') || '无'}`);
-        lines.push(`- **构建工具**: ${analysis.project.buildTool}`);
-        lines.push(`- **包管理器**: ${analysis.project.packageManager}`);
-        lines.push('');
-        
-        // 代码统计
-        lines.push('## 📈 代码统计\n');
-        lines.push(`- **总文件数**: ${analysis.codeMetrics.totalFiles}`);
-        lines.push(`- **代码行数**: ${analysis.codeMetrics.totalLines.toLocaleString()}`);
-        lines.push(`- **复杂度等级**: ${analysis.codeMetrics.complexity}`);
-        lines.push(`- **测试覆盖率**: ${analysis.codeMetrics.testCoverage}%`);
-        lines.push('');
-        
-        // 文件类型分布
-        if (Object.keys(analysis.structure.files).length > 0) {
-            lines.push('## 📁 文件类型分布\n');
-            lines.push('| 文件类型 | 数量 | 占比 |');
-            lines.push('|----------|------|------|');
-            
-            const totalFiles = Object.values(analysis.structure.files).reduce((sum, count) => sum + count, 0);
-            Object.entries(analysis.structure.files)
-                .sort(([,a], [,b]) => b - a)
-                .forEach(([ext, count]) => {
-                    const percentage = ((count / totalFiles) * 100).toFixed(1);
-                    lines.push(`| ${ext} | ${count} | ${percentage}% |`);
-                });
-            lines.push('');
-        }
-        
-        // 依赖分析
-        if (analysis.dependencies.production.length > 0) {
-            lines.push('## 📦 依赖分析\n');
-            lines.push(`- **生产依赖**: ${analysis.dependencies.production.length} 个`);
-            lines.push(`- **开发依赖**: ${analysis.dependencies.development.length} 个`);
-            lines.push(`- **安全依赖**: ${analysis.dependencies.security.length} 个`);
-            
-            if (analysis.dependencies.production.length > 0) {
-                lines.push('\n### 主要生产依赖\n');
-                analysis.dependencies.production.slice(0, 10).forEach(dep => {
-                    lines.push(`- **${dep.name}**: ${dep.version || 'latest'}`);
-                });
-            }
-            lines.push('');
-        }
-        
-        // 质量评估
-        lines.push('## 🎯 质量评估\n');
-        lines.push(`- **整体评分**: ${analysis.quality.score}/100`);
-        
-        const getScoreLevel = (score) => {
-            if (score >= 90) return '优秀 🏆';
-            if (score >= 80) return '良好 ✅';
-            if (score >= 70) return '一般 ⚠️';
-            if (score >= 60) return '待改进 🔧';
-            return '需重构 ⛔';
-        };
-        
-        lines.push(`- **质量等级**: ${getScoreLevel(analysis.quality.score)}`);
-        lines.push('');
-        
-        if (analysis.quality.issues.length > 0) {
-            lines.push('### 发现的问题\n');
-            analysis.quality.issues.forEach((issue, index) => {
-                lines.push(`${index + 1}. ⚠️ ${issue}`);
-            });
-            lines.push('');
-        }
+    displayAnalysisSummary() {
+        if (!this.currentAnalysis) return;
+        
+        const analysis = this.currentAnalysis;
+        
+        console.log('\n📊 项目分析摘要:');
+        console.log(`项目类型: ${analysis.project.type}`);
+        console.log(`代码质量: ${analysis.quality.score}/100`);
+        console.log(`文件总数: ${analysis.codeMetrics.totalFiles}`);
+        console.log(`代码行数: ${analysis.codeMetrics.totalLines}`);
         
         if (analysis.quality.suggestions.length > 0) {
-            lines.push('### 改进建议\n');
-            analysis.quality.suggestions.forEach((suggestion, index) => {
-                lines.push(`${index + 1}. 💡 ${suggestion}`);
+            console.log('\n💡 AI建议:');
+            analysis.quality.suggestions.slice(0, 3).forEach((suggestion, i) => {
+                console.log(`${i + 1}. ${suggestion}`);
             });
-            lines.push('');
         }
-        
-        // 安全评估
-        lines.push('## 🛡️ 安全评估\n');
-        
-        if (analysis.security.vulnerabilities.length > 0) {
-            lines.push('### ⚠️ 安全漏洞\n');
-            analysis.security.vulnerabilities.forEach((vuln, index) => {
-                lines.push(`${index + 1}. 🚨 ${vuln}`);
-            });
-            lines.push('');
-        }
-        
-        if (analysis.security.risks.length > 0) {
-            lines.push('### ⚠️ 安全风险\n');
-            analysis.security.risks.forEach((risk, index) => {
-                lines.push(`${index + 1}. ⚠️ ${risk}`);
-            });
-            lines.push('');
-        }
-        
-        if (analysis.security.recommendations.length > 0) {
-            lines.push('### 🔒 安全建议\n');
-            analysis.security.recommendations.forEach((rec, index) => {
-                lines.push(`${index + 1}. ${rec}`);
-            });
-            lines.push('');
-        }
-        
-        // AI 开发建议
-        lines.push('## 🤖 AI 开发建议\n');
-        lines.push(`- **开发阶段**: ${analysis.aiContext.developmentPhase}`);
-        lines.push(`- **技术债务**: ${analysis.aiContext.technicalDebt}`);
-        lines.push('');
-        
-        if (analysis.aiContext.focusAreas.length > 0) {
-            lines.push('### 🎯 关注领域\n');
-            analysis.aiContext.focusAreas.forEach(area => {
-                lines.push(`- ${area}`);
-            });
-            lines.push('');
-        }
-        
-        if (analysis.aiContext.priority.length > 0) {
-            lines.push('### 📋 优先事项\n');
-            analysis.aiContext.priority.forEach((item, index) => {
-                lines.push(`${index + 1}. ${item}`);
-            });
-            lines.push('');
-        }
-        
-        // 架构模式
-        if (analysis.structure.patterns.length > 0) {
-            lines.push('## 🏗️ 架构模式\n');
-            analysis.structure.patterns.forEach(pattern => {
-                lines.push(`- **${pattern}**: 检测到此架构模式`);
-            });
-            lines.push('');
-        }
-        
-        lines.push('---\n');
-        lines.push('*本报告由 AI 开发辅助系统自动生成*\n');
-        lines.push(`*生成时间: ${new Date().toLocaleString('zh-CN')}*`);
-        
-        return lines.join('\n');
     }
 
     /**
-     * 生成部署指南
+     * 获取项目概览 - 智能化项目概况
      */
-    async generateDeploymentGuide(analysis, targetDir) {
-        const deployPath = path.join(targetDir, '部署指南.md');
-        
+    async getProjectOverview() {
         try {
-            const content = this.generateDeploymentContent(analysis);
-            fs.writeFileSync(deployPath, content);
-            console.log('✅ 部署指南已生成');
-            return path.relative(this.projectPath, deployPath);
+            if (!this.currentAnalysis) {
+                await this.analyze();
+            }
+            
+            return {
+                name: this.currentAnalysis.metadata.name,
+                type: this.currentAnalysis.project.type,
+                language: this.currentAnalysis.project.language,
+                framework: this.currentAnalysis.project.framework,
+                quality: {
+                    score: this.currentAnalysis.quality.score,
+                    level: this.getQualityLevel(this.currentAnalysis.quality.score)
+                },
+                metrics: {
+                    files: this.currentAnalysis.codeMetrics.totalFiles,
+                    lines: this.currentAnalysis.codeMetrics.totalLines,
+                    complexity: this.currentAnalysis.codeMetrics.complexity
+                },
+                aiInsights: this.generateAIInsights()
+            };
+            
         } catch (error) {
-            console.warn('部署指南生成失败:', error.message);
+            console.error('获取项目概览失败:', error.message);
             return null;
         }
     }
 
     /**
-     * 生成部署指南内容
+     * 生成AI洞察
      */
-    generateDeploymentContent(analysis) {
-        const lines = [];
+    generateAIInsights() {
+        if (!this.currentAnalysis) return [];
         
-        lines.push(`# 🚀 ${analysis.metadata.name} - 部署指南\n`);
-        lines.push(`**更新时间**: ${new Date().toISOString()}\n`);
+        const insights = [];
+        const analysis = this.currentAnalysis;
         
-        lines.push('## 📋 部署准备\n');
-        lines.push('### 环境要求\n');
-        
-        if (analysis.project.type === 'node') {
-            lines.push('- **Node.js**: >= 14.0.0');
-            lines.push('- **npm**: >= 6.0.0 或 **Yarn**: >= 1.22.0');
-            lines.push('- **操作系统**: Linux/Ubuntu 18.04+ (推荐)');
-        } else if (analysis.project.language === 'python') {
-            lines.push('- **Python**: >= 3.8');
-            lines.push('- **pip**: >= 21.0');
-            lines.push('- **操作系统**: Linux/Ubuntu 18.04+ (推荐)');
+        // 智能洞察生成
+        if (analysis.quality.score >= 80) {
+            insights.push('项目代码质量良好，维护性较强');
+        } else if (analysis.quality.score >= 60) {
+            insights.push('项目代码质量中等，建议优化');
+        } else {
+            insights.push('项目代码质量需要改进');
         }
         
-        lines.push('- **内存**: 至少 2GB RAM');
-        lines.push('- **存储**: 至少 10GB 可用空间');
-        lines.push('- **网络**: 稳定的互联网连接\n');
-        
-        // 本地部署
-        lines.push('## 🏠 本地部署\n');
-        lines.push('### 1. 克隆项目\n');
-        lines.push('```bash');
-        lines.push('git clone <repository-url>');
-        lines.push(`cd ${analysis.metadata.name}`);
-        lines.push('```\n');
-        
-        lines.push('### 2. 安装依赖\n');
-        lines.push('```bash');
-        if (analysis.project.type === 'node') {
-            if (analysis.project.packageManager === 'yarn') {
-                lines.push('yarn install');
-            } else {
-                lines.push('npm install');
-            }
-        } else if (analysis.project.language === 'python') {
-            lines.push('pip install -r requirements.txt');
-        }
-        lines.push('```\n');
-        
-        lines.push('### 3. 环境配置\n');
-        lines.push('```bash');
-        lines.push('# 复制环境变量模板');
-        lines.push('cp .env.example .env');
-        lines.push('');
-        lines.push('# 编辑环境变量');
-        lines.push('nano .env');
-        lines.push('```\n');
-        
-        lines.push('### 4. 启动服务\n');
-        lines.push('```bash');
-        if (analysis.project.type === 'node') {
-            if (analysis.project.packageManager === 'yarn') {
-                lines.push('yarn start');
-            } else {
-                lines.push('npm start');
-            }
-        } else if (analysis.project.language === 'python') {
-            lines.push('python app.py');
-        }
-        lines.push('```\n');
-        
-        // Docker 部署
-        lines.push('## 🐳 Docker 部署\n');
-        lines.push('### 构建镜像\n');
-        lines.push('```bash');
-        lines.push(`docker build -t ${analysis.metadata.name.toLowerCase()} .`);
-        lines.push('```\n');
-        
-        lines.push('### 运行容器\n');
-        lines.push('```bash');
-        lines.push(`docker run -d -p 3000:3000 --name ${analysis.metadata.name.toLowerCase()} ${analysis.metadata.name.toLowerCase()}`);
-        lines.push('```\n');
-        
-        // 生产环境部署
-        lines.push('## 🌐 生产环境部署\n');
-        lines.push('### 服务器配置\n');
-        lines.push('1. **反向代理**: 使用 Nginx 或 Apache');
-        lines.push('2. **进程管理**: 使用 PM2 (Node.js) 或 systemd');
-        lines.push('3. **HTTPS**: 配置 SSL 证书');
-        lines.push('4. **监控**: 配置日志和性能监控');
-        lines.push('5. **备份**: 定期备份数据和配置\n');
-        
-        if (analysis.project.type === 'node') {
-            lines.push('### PM2 部署\n');
-            lines.push('```bash');
-            lines.push('# 安装 PM2');
-            lines.push('npm install -g pm2');
-            lines.push('');
-            lines.push('# 启动应用');
-            lines.push(`pm2 start ecosystem.config.js`);
-            lines.push('');
-            lines.push('# 保存配置');
-            lines.push('pm2 save');
-            lines.push('pm2 startup');
-            lines.push('```\n');
+        if (analysis.codeMetrics.complexity === 'high') {
+            insights.push('项目复杂度较高，建议模块化重构');
         }
         
-        // 环境变量
-        lines.push('## ⚙️ 环境变量配置\n');
-        lines.push('| 变量名 | 描述 | 默认值 | 必需 |');
-        lines.push('|--------|------|--------|------|');
-        lines.push('| `NODE_ENV` | 运行环境 | `development` | 是 |');
-        lines.push('| `PORT` | 服务端口 | `3000` | 否 |');
-        lines.push('| `DATABASE_URL` | 数据库连接 | - | 是 |');
-        lines.push('| `SECRET_KEY` | 加密密钥 | - | 是 |\n');
-        
-        // 健康检查
-        lines.push('## 🔍 健康检查\n');
-        lines.push('部署完成后，访问以下端点验证服务状态：\n');
-        lines.push('- **健康检查**: `GET /health`');
-        lines.push('- **服务状态**: `GET /api/status`');
-        lines.push('- **应用信息**: `GET /api/info`\n');
-        
-        // 故障排除
-        lines.push('## 🔧 故障排除\n');
-        lines.push('### 常见问题\n');
-        lines.push('1. **端口占用**: 检查端口是否被其他进程占用');
-        lines.push('2. **依赖缺失**: 确保所有依赖都已正确安装');
-        lines.push('3. **环境变量**: 检查必需的环境变量是否设置');
-        lines.push('4. **权限问题**: 确保进程有足够的文件访问权限\n');
-        
-        lines.push('### 日志查看\n');
-        lines.push('```bash');
-        if (analysis.project.type === 'node') {
-            lines.push('# PM2 日志');
-            lines.push('pm2 logs');
-            lines.push('');
+        if (analysis.project.type === 'wordpress') {
+            insights.push('WordPress项目，注意安全性和性能优化');
         }
-        lines.push('# 系统日志');
-        lines.push('tail -f /var/log/application.log');
-        lines.push('```\n');
         
-        lines.push('---\n*此文档由 AI 开发辅助系统自动生成*');
-        
-        return lines.join('\n');
+        return insights;
     }
 
     /**
-     * 生成文档索引
+     * 获取质量等级
      */
-    async generateDocsIndex(analysis, targetDir, generatedFiles) {
-        const indexPath = path.join(targetDir, 'README.md');
+    getQualityLevel(score) {
+        if (score >= 80) return '优秀';
+        if (score >= 60) return '良好';
+        if (score >= 40) return '一般';
+        return '需要改进';
+    }
+
+    /**
+     * 健康检查 - 系统状态验证
+     */
+    async healthCheck() {
+        const checks = {
+            projectPath: fs.existsSync(this.projectPath),
+            analyzer: this.analyzer instanceof IntelligentProjectAnalyzer,
+            contextManager: this.contextManager instanceof ContextManager,
+            rulesEngine: this.rulesEngine instanceof AIRulesEngine,
+            docGenerator: this.docGenerator instanceof SmartDocGenerator
+        };
         
+        const allHealthy = Object.values(checks).every(check => check === true);
+        
+        return {
+            healthy: allHealthy,
+            version: this.version,
+            checks,
+            timestamp: new Date().toISOString()
+        };
+    }
+
+    /**
+     * 快速分析 - 轻量级项目检查
+     */
+    async quickAnalysis() {
         try {
-            const content = this.generateDocsIndexContent(analysis, generatedFiles);
-            fs.writeFileSync(indexPath, content);
-            console.log('✅ 文档索引已生成');
-            return path.relative(this.projectPath, indexPath);
+            console.log('正在进行快速AI分析...');
+            
+            const quickResult = await this.analyzer.quickAnalyze();
+            
+            console.log(`项目类型: ${quickResult.type}`);
+            console.log(`主要语言: ${quickResult.language}`);
+            console.log(`文件数量: ${quickResult.fileCount}`);
+            
+            return quickResult;
+            
         } catch (error) {
-            console.warn('文档索引生成失败:', error.message);
+            console.error('快速分析失败:', error.message);
             return null;
         }
     }
 
     /**
-     * 生成文档索引内容
+     * 清理缓存和临时文件
      */
-    generateDocsIndexContent(analysis, generatedFiles) {
-        const lines = [];
-        
-        lines.push(`# 📚 ${analysis.metadata.name} - 项目文档\n`);
-        lines.push(`**最后更新**: ${new Date().toLocaleString('zh-CN')}\n`);
-        
-        lines.push('## 📋 文档目录\n');
-        
-        // 过滤并分类文档
-        const docs = generatedFiles.filter(file => file && (file.includes('AI助手文档/') || file.includes('AIAssistantDocs/'))).map(file => {
-            const basename = path.basename(file);
-            const name = basename.replace('.md', '');
-            return { name, file, basename };
-        });
-        
-        if (docs.length > 0) {
-            docs.forEach(doc => {
-                let icon = '📄';
-                if (doc.name.includes('API')) icon = '🌐';
-                else if (doc.name.includes('架构')) icon = '🏗️';
-                else if (doc.name.includes('开发')) icon = '💻';
-                else if (doc.name.includes('部署')) icon = '🚀';
-                else if (doc.name.includes('分析')) icon = '📊';
-                
-                lines.push(`- ${icon} [${doc.name}](${doc.basename})`);
-            });
+    async cleanup() {
+        try {
+            await this.contextManager.cleanup();
+            console.log('清理完成');
+            return true;
+        } catch (error) {
+            console.error('清理失败:', error.message);
+            return false;
         }
-        
-        lines.push('');
-        
-        // 项目快速信息
-        lines.push('## ℹ️ 项目信息\n');
-        lines.push(`- **项目类型**: ${analysis.project.type}`);
-        lines.push(`- **主要语言**: ${analysis.project.language}`);
-        lines.push(`- **质量评分**: ${analysis.quality.score}/100`);
-        lines.push(`- **复杂度**: ${analysis.codeMetrics.complexity}`);
-        lines.push('');
-        
-        // 快速链接
-        lines.push('## 🔗 快速链接\n');
-        lines.push('- [返回项目根目录](../README.md)');
-        lines.push('- [查看源代码](../src/)');
-        if (analysis.project.type === 'node') {
-            lines.push('- [查看 package.json](../package.json)');
-        }
-        lines.push('');
-        
-        lines.push('## 📝 文档说明\n');
-        lines.push('本文档集合由 AI 开发辅助系统自动生成，包含了项目的详细分析、开发指南、部署说明等内容。');
-        lines.push('如需更新文档，请在项目根目录运行 `ai-dev docs` 命令。\n');
-        
-        lines.push('---\n*由 AI 开发辅助系统自动生成*');
-        
-        return lines.join('\n');
     }
 
     /**
-     * 为单个文件生成详细文档
+     * 获取系统信息
      */
-    async generateFileDocumentation(filePath) {
-        console.log(`📄 为文件生成文档: ${filePath}`);
-        
+    getSystemInfo() {
+        return {
+            version: this.version,
+            projectPath: this.projectPath,
+            contextDir: this.contextDir,
+            config: this.config,
+            features: [
+                'AI智能项目分析',
+                '智能文档生成',
+                '自适应配置',
+                '上下文感知',
+                '质量评估'
+            ]
+        };
+    }
+
+    /**
+     * 单文件分析 - AI智能单文件分析
+     */
+    async analyzeFile(filePath, saveToFile = false) {
         try {
-            // 确保文件存在
-            const fullPath = path.resolve(this.projectPath, filePath);
-            if (!fs.existsSync(fullPath)) {
+            const absolutePath = path.resolve(this.projectPath, filePath);
+            
+            // 检查文件是否存在
+            if (!fs.existsSync(absolutePath)) {
                 throw new Error(`文件不存在: ${filePath}`);
             }
             
+            // 检查是否为文件（不是目录）
+            const stats = fs.statSync(absolutePath);
+            if (!stats.isFile()) {
+                throw new Error(`路径不是文件: ${filePath}`);
+            }
+            
             // 读取文件内容
-            const fileContent = fs.readFileSync(fullPath, 'utf8');
-            const fileExtension = path.extname(filePath).toLowerCase();
-            const fileName = path.basename(filePath);
-            const relativePath = path.relative(this.projectPath, fullPath);
+            const content = fs.readFileSync(absolutePath, 'utf8');
+            const extension = path.extname(filePath).toLowerCase();
             
-            // 获取项目分析结果
-            let projectAnalysis;
-            const analysisPath = path.join(this.contextDir, 'project-analysis.json');
-            if (fs.existsSync(analysisPath)) {
-                projectAnalysis = JSON.parse(fs.readFileSync(analysisPath, 'utf8'));
-            } else {
-                // 如果没有项目分析，进行快速分析
-                projectAnalysis = await this.analyzer.analyze();
-            }
+            console.log(`🔍 正在深度分析文件: ${filePath}`);
+            console.log('📊 执行AI智能业务逻辑分析...');
             
-            // 分析文件类型和内容
-            const fileAnalysis = this.analyzeFileContent(fileContent, fileExtension, fileName);
-            
-            // 生成文档内容
-            const docContent = this.generateFileDocContent(
-                filePath, 
-                fileContent, 
-                fileAnalysis, 
-                projectAnalysis
-            );
-            
-            // 确保AI助手文档目录存在
-            const aiDocsDir = path.join(this.projectPath, 'AI助手文档');
-            const aiDocsDirEn = path.join(this.projectPath, 'AIAssistantDocs');
-            
-            let targetDocsDir = aiDocsDir;
-            if (fs.existsSync(aiDocsDirEn) && !fs.existsSync(aiDocsDir)) {
-                targetDocsDir = aiDocsDirEn;
-            }
-            
-            if (!fs.existsSync(targetDocsDir)) {
-                fs.mkdirSync(targetDocsDir, { recursive: true });
-            }
-            
-            // 创建文件专用的文档目录
-            const fileDocsDir = path.join(targetDocsDir, '文件文档');
-            if (!fs.existsSync(fileDocsDir)) {
-                fs.mkdirSync(fileDocsDir, { recursive: true });
-            }
-            
-            // 生成文档文件名
-            const docFileName = `${fileName.replace(/\.[^/.]+$/, '')}_文档.md`;
-            const docFilePath = path.join(fileDocsDir, docFileName);
-            
-            // 写入文档文件
-            fs.writeFileSync(docFilePath, docContent);
-            
-            // 生成改进建议
-            const suggestions = this.generateFileSuggestions(fileAnalysis, projectAnalysis);
-            
-            console.log('✅ 文件文档生成完成');
-            
-            return {
-                success: true,
-                docFile: path.relative(this.projectPath, docFilePath),
-                suggestions: suggestions,
-                codeComments: false // 暂时不修改原文件
+            // 基本文件信息
+            const fileInfo = {
+                name: path.basename(filePath),
+                path: filePath,
+                extension: extension,
+                size: stats.size,
+                lines: content.split('\n').length,
+                lastModified: stats.mtime,
+                encoding: 'utf8'
             };
             
+            // AI智能文件类型和用途分析
+            const intelligentTypeAnalysis = await this.performIntelligentTypeAnalysis(content, extension, filePath);
+            
+            // AI业务逻辑深度分析
+            const businessLogicAnalysis = await this.performBusinessLogicAnalysis(content, extension, intelligentTypeAnalysis);
+            
+            // AI架构模式识别
+            const architectureAnalysis = await this.performArchitectureAnalysis(content, extension, filePath);
+            
+            // AI代码质量深度分析
+            const qualityAnalysis = await this.performDeepQualityAnalysis(content, extension, businessLogicAnalysis);
+            
+            // AI安全性专业分析
+            const securityAnalysis = await this.performProfessionalSecurityAnalysis(content, extension, businessLogicAnalysis);
+            
+            // AI复杂度和可维护性分析
+            const complexityAnalysis = await this.performComplexityAndMaintainabilityAnalysis(content, extension, businessLogicAnalysis);
+            
+            // AI依赖关系和影响分析
+            const dependencyAnalysis = await this.performDependencyImpactAnalysis(content, extension, filePath);
+            
+            // AI性能优化建议
+            const performanceAnalysis = await this.performPerformanceAnalysis(content, extension, businessLogicAnalysis);
+            
+            // AI综合改进建议
+            const improvementSuggestions = await this.generateIntelligentImprovementSuggestions(
+                content, extension, businessLogicAnalysis, qualityAnalysis, securityAnalysis, architectureAnalysis
+            );
+            
+            const analysisResult = {
+                fileInfo,
+                intelligentType: intelligentTypeAnalysis,
+                businessLogic: businessLogicAnalysis,
+                architecture: architectureAnalysis,
+                quality: qualityAnalysis,
+                security: securityAnalysis,
+                complexity: complexityAnalysis,
+                dependencies: dependencyAnalysis,
+                performance: performanceAnalysis,
+                improvements: improvementSuggestions,
+                timestamp: new Date().toISOString()
+            };
+            
+            console.log('✅ AI智能分析完成');
+            
+            // 如果需要保存到文件，生成分析报告
+            if (saveToFile) {
+                const reportPath = await this.saveIntelligentFileAnalysisReport(analysisResult);
+                analysisResult.reportPath = reportPath;
+            }
+            
+            return analysisResult;
+            
         } catch (error) {
-            console.error('文件文档生成失败:', error.message);
-            throw error;
+            throw new Error(`文件分析失败: ${error.message}`);
         }
     }
 
     /**
-     * 智能分析文件内容
+     * AI智能文件类型和用途分析
      */
-    analyzeFileContent(content, extension, fileName) {
+    async performIntelligentTypeAnalysis(content, extension, filePath) {
         const analysis = {
-            type: 'unknown',
-            language: this.getLanguageFromExtension(extension),
-            size: content.length,
-            lines: content.split('\n').length,
-            functions: [],
-            classes: [],
-            variables: [],
-            comments: [],
-            imports: [],
-            exports: [],
-            complexity: 'low',
-            documentation: false,
-            framework: null,
-            purposes: [],
-            patterns: [],
-            security: {
-                issues: [],
-                suggestions: []
-            }
+            primaryType: '',
+            specificPurpose: '',
+            frameworkRole: '',
+            businessContext: '',
+            technicalClassification: ''
         };
-
-        // 智能检测框架
-        analysis.framework = this.detectFileFramework(fileName, content);
         
-        // 智能分析用途
-        analysis.purposes = this.analyzeFilePurpose(fileName, content, analysis.framework);
-
-        // 通用代码分析
-        this.analyzeGenericContent(content, analysis);
-
-        // 语言特定分析
+        // 基础类型映射
+        const typeMap = {
+            '.js': 'JavaScript',
+            '.jsx': 'React JSX',
+            '.ts': 'TypeScript',
+            '.tsx': 'TypeScript React',
+            '.php': 'PHP',
+            '.py': 'Python',
+            '.html': 'HTML',
+            '.css': 'CSS',
+            '.json': 'JSON配置',
+            '.md': 'Markdown文档'
+        };
+        
+        analysis.primaryType = typeMap[extension] || '未知类型';
+        
+        // PHP文件深度分析
         if (extension === '.php') {
-            this.analyzePHPContent(content, analysis);
-        } else if (['.js', '.jsx', '.ts', '.tsx'].includes(extension)) {
-            this.analyzeJavaScriptContent(content, analysis);
-        } else if (['.css', '.scss', '.sass', '.less'].includes(extension)) {
-            this.analyzeCSSContent(content, analysis);
-        } else if (['.html', '.htm'].includes(extension)) {
-            this.analyzeHTMLContent(content, analysis);
-        } else if (extension === '.py') {
-            this.analyzePythonContent(content, analysis);
+            if (content.includes('wp_') || content.includes('wordpress') || content.includes('get_header()')) {
+                analysis.technicalClassification = 'WordPress主题/插件文件';
+                
+                if (content.includes('wp-config')) {
+                    analysis.specificPurpose = 'WordPress核心配置文件';
+                    analysis.businessContext = '管理数据库连接、安全密钥、调试设置等核心配置';
+                } else if (content.includes('index.php') && filePath.includes('index.php')) {
+                    analysis.specificPurpose = 'WordPress主入口文件';
+                    analysis.businessContext = '处理所有HTTP请求的路由分发和WordPress核心加载';
+                } else if (content.includes('function ') && content.includes('add_action')) {
+                    analysis.specificPurpose = 'WordPress功能扩展文件';
+                    analysis.businessContext = '实现自定义功能、钩子处理和主题/插件逻辑';
+                } else if (content.includes('class ') && content.includes('extends')) {
+                    analysis.specificPurpose = 'WordPress面向对象组件';
+                    analysis.businessContext = '封装业务逻辑的类文件，提供可重用的功能模块';
+                }
+            } else if (content.includes('class ') && content.includes('public function')) {
+                analysis.technicalClassification = 'PHP面向对象类文件';
+                analysis.specificPurpose = '业务逻辑封装类';
+                analysis.businessContext = '实现特定业务功能的面向对象代码组件';
+            } else if (content.includes('$_GET') || content.includes('$_POST')) {
+                analysis.technicalClassification = 'PHP Web处理脚本';
+                analysis.specificPurpose = 'HTTP请求处理文件';
+                analysis.businessContext = '处理用户输入、表单提交或API接口逻辑';
+            }
         }
-
-        // 计算复杂度
-        analysis.complexity = this.calculateFileComplexity(analysis);
-
+        
+        // JavaScript文件深度分析
+        if (extension === '.js' || extension === '.jsx') {
+            if (content.includes('import React') || content.includes('from \'react\'')) {
+                analysis.technicalClassification = 'React组件文件';
+                if (content.includes('useState') || content.includes('useEffect')) {
+                    analysis.specificPurpose = 'React功能组件';
+                    analysis.businessContext = '实现用户界面交互和状态管理的前端组件';
+                } else if (content.includes('class ') && content.includes('extends Component')) {
+                    analysis.specificPurpose = 'React类组件';
+                    analysis.businessContext = '基于类的React组件，处理复杂的生命周期和状态逻辑';
+                }
+            } else if (content.includes('module.exports') || content.includes('require(')) {
+                analysis.technicalClassification = 'Node.js模块';
+                analysis.specificPurpose = 'Node.js后端模块';
+                analysis.businessContext = '服务器端业务逻辑、API处理或工具函数模块';
+            } else if (content.includes('express') || content.includes('app.get') || content.includes('app.post')) {
+                analysis.technicalClassification = 'Express.js路由/中间件';
+                analysis.specificPurpose = 'Web API路由处理';
+                analysis.businessContext = '处理HTTP请求、API端点和中间件逻辑';
+            }
+        }
+        
         return analysis;
     }
 
     /**
-     * 通用代码分析
+     * AI业务逻辑深度分析
      */
-    analyzeGenericContent(content, analysis) {
-        // 检测模式
-        const patterns = {
-            'mvc': /controller|model|view/i,
-            'singleton': /singleton|instance/i,
-            'factory': /factory|create/i,
-            'observer': /observer|notify|subscribe/i,
-            'decorator': /decorator|wrapper/i
+    async performBusinessLogicAnalysis(content, extension, typeAnalysis) {
+        const analysis = {
+            mainPurpose: '',
+            keyFunctions: [],
+            businessRules: [],
+            dataFlow: '',
+            userInteractions: [],
+            integrations: [],
+            businessValue: ''
         };
-
-        analysis.patterns = Object.entries(patterns)
-            .filter(([name, pattern]) => pattern.test(content))
-            .map(([name]) => name);
-
-        // 检测文档
-        analysis.documentation = content.includes('/**') || content.includes('"""') || 
-                                content.includes('///') || content.includes('##');
-
-        // 提取注释
-        const commentPatterns = [
-            /\/\*[\s\S]*?\*\//g,  // /* */ 注释
-            /\/\/.*$/gm,           // // 注释
-            /#.*$/gm,              // # 注释
-            /"""[\s\S]*?"""/g,     // Python 文档字符串
-        ];
-
-        commentPatterns.forEach(pattern => {
-            const matches = content.match(pattern);
-            if (matches) {
-                analysis.comments.push(...matches);
-            }
-        });
-    }
-
-    /**
-     * 从扩展名获取语言
-     */
-    getLanguageFromExtension(extension) {
-        const languageMap = {
-            '.php': 'php',
-            '.js': 'javascript',
-            '.jsx': 'javascript',
-            '.ts': 'typescript',
-            '.tsx': 'typescript',
-            '.css': 'css',
-            '.scss': 'scss',
-            '.sass': 'sass',
-            '.less': 'less',
-            '.html': 'html',
-            '.htm': 'html',
-            '.py': 'python',
-            '.java': 'java',
-            '.cs': 'csharp',
-            '.rb': 'ruby',
-            '.go': 'go',
-            '.rs': 'rust'
-        };
-        return languageMap[extension] || 'unknown';
-    }
-
-    /**
-     * 智能检测文件的框架类型
-     */
-    detectFileFramework(fileName, content) {
-        const patterns = {
-            wordpress: [/wp_\w+\(/, /add_action\(/, /add_filter\(/, /\$wpdb/, /WP_\w+/],
-            laravel: [/use Illuminate\\/, /Artisan::/, /Route::/, /Schema::/],
-            django: [/from django/, /django\./, /models\.Model/, /HttpResponse/],
-            react: [/import React/, /useState/, /useEffect/, /jsx|tsx$/],
-            vue: [/Vue\./, /<template>/, /<script>/, /\.vue$/],
-            angular: [/@Component/, /@Injectable/, /Angular/, /ng-/],
-            express: [/express\(\)/, /app\.get/, /app\.post/, /req\s*,\s*res/],
-            symfony: [/use Symfony\\/, /namespace App\\/, /@Route/, /Controller/]
-        };
-
-        for (const [framework, framePatterns] of Object.entries(patterns)) {
-            if (framePatterns.some(pattern => pattern.test(content) || pattern.test(fileName))) {
-                return framework;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 智能分析文件用途
-     */
-    analyzeFilePurpose(fileName, content, framework = null) {
-        const purposes = [];
         
-        // 通用模式检测
-        if (content.includes('function') || content.includes('def ') || content.includes('class ')) {
-            purposes.push('logic');
-        }
-        if (content.includes('SELECT') || content.includes('INSERT') || content.includes('UPDATE')) {
-            purposes.push('database');
-        }
-        if (content.includes('route') || content.includes('endpoint') || content.includes('api')) {
-            purposes.push('routing');
-        }
-        if (content.includes('test') || content.includes('Test') || content.includes('assert')) {
-            purposes.push('testing');
-        }
-        if (content.includes('config') || content.includes('Config') || fileName.includes('config')) {
-            purposes.push('configuration');
-        }
-
-        return purposes.length > 0 ? purposes : ['general'];
-    }
-
-    /**
-     * 分析PHP内容
-     */
-    analyzePHPContent(content, analysis) {
-        // 提取函数
-        const functionMatches = content.match(/function\s+(\w+)\s*\([^)]*\)/g);
-        if (functionMatches) {
-            analysis.functions = functionMatches.map(match => {
-                const name = match.match(/function\s+(\w+)/)[1];
-                return { name, type: 'function' };
-            });
-        }
-
-        // 提取类
-        const classMatches = content.match(/class\s+(\w+)/g);
-        if (classMatches) {
-            analysis.classes = classMatches.map(match => {
-                const name = match.match(/class\s+(\w+)/)[1];
-                return { name, type: 'class' };
-            });
-        }
-
-        // 通用安全检查
-        this.checkGeneralSecurity(content, analysis, 'php');
-
-        // 检查文档注释
-        analysis.documentation = content.includes('/**') && content.includes('*/');
-    }
-
-    /**
-     * 通用安全检查
-     */
-    checkGeneralSecurity(content, analysis, language) {
-        const securityIssues = [];
-        const suggestions = [];
-
-        // 通用安全模式
-        const securityPatterns = {
-            'input_validation': {
-                patterns: [/\$_(GET|POST|REQUEST)/, /request\.(get|post)/, /input\(/],
-                message: '发现用户输入，需要验证和清理',
-                suggestion: '对所有用户输入进行验证、清理和转义'
-            },
-            'sql_injection': {
-                patterns: [/query.*\$/, /sql.*\+/, /SELECT.*\$/, /INSERT.*\$/],
-                message: '可能存在SQL注入风险',
-                suggestion: '使用参数化查询或ORM来防止SQL注入'
-            },
-            'xss_risk': {
-                patterns: [/echo\s+\$/, /print\s+\$/, /innerHTML\s*=/, /document\.write/],
-                message: '可能存在XSS风险',
-                suggestion: '对输出内容进行HTML转义'
-            },
-            'file_inclusion': {
-                patterns: [/include\s+\$/, /require\s+\$/, /file_get_contents\s*\(/],
-                message: '文件操作风险',
-                suggestion: '验证文件路径，使用白名单机制'
-            }
+        const lines = content.split('\n');
+        
+        // 函数提取和分析
+        const functionPatterns = {
+            '.php': [
+                /function\s+(\w+)\s*\(/g,
+                /public\s+function\s+(\w+)\s*\(/g,
+                /private\s+function\s+(\w+)\s*\(/g
+            ],
+            '.js': [
+                /function\s+(\w+)\s*\(/g,
+                /const\s+(\w+)\s*=\s*\(/g,
+                /(\w+)\s*:\s*function/g
+            ]
         };
-
-        Object.entries(securityPatterns).forEach(([type, config]) => {
-            if (config.patterns.some(pattern => pattern.test(content))) {
-                securityIssues.push(config.message);
-                suggestions.push(config.suggestion);
-            }
-        });
-
-        analysis.security.issues = securityIssues;
-        analysis.security.suggestions = suggestions;
-    }
-
-    /**
-     * 分析Python内容
-     */
-    analyzePythonContent(content, analysis) {
-        // 提取函数
-        const functionMatches = content.match(/def\s+(\w+)\s*\([^)]*\):/g);
-        if (functionMatches) {
-            analysis.functions = functionMatches.map(match => {
-                const name = match.match(/def\s+(\w+)/)[1];
-                return { name, type: 'function' };
-            });
-        }
-
-        // 提取类
-        const classMatches = content.match(/class\s+(\w+).*:/g);
-        if (classMatches) {
-            analysis.classes = classMatches.map(match => {
-                const name = match.match(/class\s+(\w+)/)[1];
-                return { name, type: 'class' };
-            });
-        }
-
-        // 通用安全检查
-        this.checkGeneralSecurity(content, analysis, 'python');
-    }
-
-    /**
-     * 分析JavaScript内容
-     */
-    analyzeJavaScriptContent(content, analysis) {
-        // 提取函数
-        const functionPatterns = [
-            /function\s+(\w+)/g,
-            /const\s+(\w+)\s*=\s*\([^)]*\)\s*=>/g,
-            /let\s+(\w+)\s*=\s*function/g,
-            /(\w+)\s*:\s*function/g
-        ];
-
-        functionPatterns.forEach(pattern => {
-            const matches = [...content.matchAll(pattern)];
-            if (matches) {
-                matches.forEach(match => {
-                    analysis.functions.push({ name: match[1], type: 'function' });
+        
+        // 提取关键函数
+        const patterns = functionPatterns[extension] || functionPatterns['.js'];
+        patterns.forEach(pattern => {
+            let match;
+            while ((match = pattern.exec(content)) !== null) {
+                const functionName = match[1];
+                const functionContext = this.extractFunctionContext(content, functionName);
+                analysis.keyFunctions.push({
+                    name: functionName,
+                    purpose: this.inferFunctionPurpose(functionName, functionContext),
+                    businessRole: this.inferBusinessRole(functionName, functionContext)
                 });
             }
         });
+        
+        // 业务规则识别
+        if (extension === '.php') {
+            if (content.includes('wp-config')) {
+                analysis.mainPurpose = 'WordPress站点核心配置管理';
+                analysis.businessRules.push('数据库连接参数配置');
+                analysis.businessRules.push('安全密钥和盐值设置');
+                analysis.businessRules.push('调试模式控制');
+                analysis.dataFlow = '配置信息 → WordPress核心 → 整个站点功能';
+                analysis.businessValue = '确保WordPress站点能够正常运行并保持安全性';
+            } else if (content.includes('$_POST') || content.includes('$_GET')) {
+                analysis.mainPurpose = '用户输入处理和业务逻辑执行';
+                analysis.userInteractions.push('接收用户表单数据');
+                analysis.userInteractions.push('处理HTTP请求参数');
+                analysis.dataFlow = '用户输入 → 验证处理 → 业务逻辑 → 响应输出';
+            } else if (content.includes('add_action') || content.includes('add_filter')) {
+                analysis.mainPurpose = 'WordPress功能扩展和定制化';
+                analysis.businessRules.push('响应WordPress核心事件');
+                analysis.businessRules.push('修改或扩展默认行为');
+                analysis.dataFlow = 'WordPress事件 → 自定义处理 → 修改结果';
+                analysis.businessValue = '为网站提供定制化功能和用户体验';
+            }
+        }
+        
+        // 集成分析
+        const integrationPatterns = [
+            { pattern: /mysql_|mysqli_|PDO/i, type: '数据库集成' },
+            { pattern: /curl_|file_get_contents|wp_remote/i, type: 'HTTP/API集成' },
+            { pattern: /mail\(|wp_mail/i, type: '邮件系统集成' },
+            { pattern: /session_start|$_SESSION/i, type: '会话管理' },
+            { pattern: /json_encode|json_decode/i, type: 'JSON数据处理' }
+        ];
+        
+        integrationPatterns.forEach(({ pattern, type }) => {
+            if (pattern.test(content)) {
+                analysis.integrations.push(type);
+            }
+        });
+        
+        return analysis;
+    }
 
-        // 提取类
-        const classMatches = content.match(/class\s+(\w+)/g);
-        if (classMatches) {
-            analysis.classes = classMatches.map(match => {
-                const name = match.match(/class\s+(\w+)/)[1];
-                return { name, type: 'class' };
+    /**
+     * AI架构模式识别
+     */
+    async performArchitectureAnalysis(content, extension, filePath) {
+        const analysis = {
+            architecturalPattern: '',
+            designPatterns: [],
+            codeOrganization: '',
+            separationOfConcerns: '',
+            scalabilityFactors: []
+        };
+        
+        // 架构模式识别
+        if (content.includes('class ') && content.includes('extends')) {
+            analysis.architecturalPattern = '面向对象架构';
+            if (content.includes('interface ') || content.includes('implements ')) {
+                analysis.designPatterns.push('接口隔离原则');
+            }
+        } else if (content.includes('function ') && !content.includes('class ')) {
+            analysis.architecturalPattern = '过程式编程';
+        }
+        
+        // 设计模式识别
+        if (content.includes('getInstance') || content.includes('instance')) {
+            analysis.designPatterns.push('单例模式');
+        }
+        if (content.includes('factory') || content.includes('Factory')) {
+            analysis.designPatterns.push('工厂模式');
+        }
+        if (content.includes('observer') || content.includes('Observer')) {
+            analysis.designPatterns.push('观察者模式');
+        }
+        
+        // WordPress特定架构
+        if (content.includes('add_action') || content.includes('add_filter')) {
+            analysis.architecturalPattern = 'WordPress钩子架构';
+            analysis.designPatterns.push('事件驱动模式');
+        }
+        
+        // 代码组织评估
+        const functionCount = (content.match(/function\s+\w+/g) || []).length;
+        const classCount = (content.match(/class\s+\w+/g) || []).length;
+        
+        if (classCount > 0 && functionCount / classCount < 10) {
+            analysis.codeOrganization = '良好的类封装';
+        } else if (functionCount > 20 && classCount === 0) {
+            analysis.codeOrganization = '功能过多，建议模块化';
+        } else {
+            analysis.codeOrganization = '标准的代码组织';
+        }
+        
+        return analysis;
+    }
+
+    /**
+     * 深度代码质量分析
+     */
+    async performDeepQualityAnalysis(content, extension, businessLogic) {
+        const lines = content.split('\n');
+        const totalLines = lines.length;
+        
+        // 基础指标
+        const codeLines = lines.filter(line => line.trim() && !this.isCommentLine(line, extension)).length;
+        const commentLines = lines.filter(line => this.isCommentLine(line, extension)).length;
+        const emptyLines = totalLines - codeLines - commentLines;
+        
+        // 高级质量指标
+        const qualityMetrics = {
+            totalLines,
+            codeLines,
+            commentLines,
+            emptyLines,
+            commentRatio: commentLines / totalLines,
+            codeComplexity: this.calculateAdvancedComplexity(content),
+            maintainabilityIndex: this.calculateMaintainabilityIndex(content, codeLines),
+            technicalDebt: this.assessTechnicalDebt(content, extension),
+            readabilityScore: this.assessReadability(content, extension),
+            testCoverage: this.assessTestIndicators(content)
+        };
+        
+        // 质量评分算法
+        let score = 100;
+        
+        // 注释质量
+        if (qualityMetrics.commentRatio < 0.1) score -= 25;
+        else if (qualityMetrics.commentRatio < 0.2) score -= 10;
+        
+        // 复杂度惩罚
+        if (qualityMetrics.codeComplexity > 50) score -= 30;
+        else if (qualityMetrics.codeComplexity > 20) score -= 15;
+        
+        // 可维护性
+        if (qualityMetrics.maintainabilityIndex < 50) score -= 20;
+        else if (qualityMetrics.maintainabilityIndex < 70) score -= 10;
+        
+        // 技术债务
+        score -= qualityMetrics.technicalDebt * 5;
+        
+        // 可读性
+        if (qualityMetrics.readabilityScore < 60) score -= 15;
+        
+        return {
+            score: Math.max(0, Math.min(100, score)),
+            metrics: qualityMetrics,
+            level: this.getQualityLevel(score),
+            recommendations: this.generateQualityRecommendations(qualityMetrics)
+        };
+    }
+
+    /**
+     * 专业安全性分析
+     */
+    async performProfessionalSecurityAnalysis(content, extension, businessLogic) {
+        const vulnerabilities = [];
+        const securityWarnings = [];
+        const securityStrengths = [];
+        
+        // 高危漏洞检测
+        const highRiskPatterns = [
+            { pattern: /eval\s*\(/g, type: '代码注入', severity: 'critical', description: 'eval()函数可执行任意代码' },
+            { pattern: /exec\s*\(|system\s*\(|shell_exec/g, type: '命令注入', severity: 'critical', description: '系统命令执行函数' },
+            { pattern: /\$_GET\[.*\]\s*without\s*validation/g, type: 'XSS漏洞', severity: 'high', description: '未验证的GET参数直接使用' }
+        ];
+        
+        // SQL注入检测
+        if (extension === '.php') {
+            if (content.includes('mysql_query') || content.includes('mysqli_query')) {
+                if (!content.includes('prepare') && !content.includes('bind_param')) {
+                    vulnerabilities.push({
+                        type: 'SQL注入',
+                        severity: 'critical',
+                        description: '使用直接SQL查询而非参数化查询',
+                        recommendation: '使用预处理语句和参数绑定'
+                    });
+                }
+            }
+            
+            // XSS检测
+            if (content.includes('echo $_') || content.includes('print $_')) {
+                vulnerabilities.push({
+                    type: 'XSS漏洞',
+                    severity: 'high',
+                    description: '直接输出用户输入数据',
+                    recommendation: '使用htmlspecialchars()或其他转义函数'
+                });
+            }
+            
+            // CSRF检测
+            if (content.includes('$_POST') && !content.includes('wp_nonce') && !content.includes('csrf')) {
+                securityWarnings.push({
+                    type: 'CSRF风险',
+                    description: '缺少CSRF保护机制',
+                    recommendation: '实施token验证或使用WordPress nonce'
+                });
+            }
+        }
+        
+        // 敏感信息泄露检测
+        const sensitivePatterns = [
+            { pattern: /password\s*=\s*['"]\w+['"]/i, type: '硬编码密码' },
+            { pattern: /api[_-]?key\s*=\s*['"]\w+['"]/i, type: '硬编码API密钥' },
+            { pattern: /secret\s*=\s*['"]\w+['"]/i, type: '硬编码密钥' }
+        ];
+        
+        sensitivePatterns.forEach(({ pattern, type }) => {
+            if (pattern.test(content)) {
+                vulnerabilities.push({
+                    type: '敏感信息泄露',
+                    severity: 'high',
+                    description: `发现${type}`,
+                    recommendation: '使用环境变量或安全的配置管理'
+                });
+            }
+        });
+        
+        // 安全优势识别
+        if (content.includes('sanitize_') || content.includes('validate_')) {
+            securityStrengths.push('使用了数据验证和清理函数');
+        }
+        if (content.includes('wp_nonce')) {
+            securityStrengths.push('实施了WordPress CSRF保护');
+        }
+        if (content.includes('prepare(') && content.includes('bind_')) {
+            securityStrengths.push('使用了参数化查询');
+        }
+        
+        const riskLevel = vulnerabilities.some(v => v.severity === 'critical') ? 'critical' :
+                         vulnerabilities.some(v => v.severity === 'high') ? 'high' :
+                         securityWarnings.length > 0 ? 'medium' : 'low';
+        
+        return {
+            riskLevel,
+            vulnerabilities,
+            warnings: securityWarnings,
+            strengths: securityStrengths,
+            totalIssues: vulnerabilities.length + securityWarnings.length,
+            securityScore: this.calculateSecurityScore(vulnerabilities, securityWarnings, securityStrengths)
+        };
+    }
+
+    /**
+     * 复杂度和可维护性分析
+     */
+    async performComplexityAndMaintainabilityAnalysis(content, extension, businessLogic) {
+        const metrics = {
+            cyclomaticComplexity: this.calculateCyclomaticComplexity(content),
+            cognitiveComplexity: this.calculateCognitiveComplexity(content),
+            maintainabilityIndex: this.calculateMaintainabilityIndex(content),
+            couplingLevel: this.assessCoupling(content, extension),
+            cohesionLevel: this.assessCohesion(content, extension)
+        };
+        
+        return {
+            ...metrics,
+            overallComplexity: this.determineOverallComplexity(metrics),
+            maintainabilityLevel: this.determineMaintainabilityLevel(metrics),
+            refactoringPriority: this.determineRefactoringPriority(metrics),
+            recommendations: this.generateComplexityRecommendations(metrics)
+        };
+    }
+
+    /**
+     * 依赖关系和影响分析
+     */
+    async performDependencyImpactAnalysis(content, extension, filePath) {
+        const dependencies = {
+            external: [],
+            internal: [],
+            frameworks: [],
+            libraries: []
+        };
+        
+        // 外部依赖识别
+        if (extension === '.php') {
+            // WordPress依赖
+            const wpFunctions = content.match(/wp_\w+/g) || [];
+            if (wpFunctions.length > 0) {
+                dependencies.frameworks.push({
+                    name: 'WordPress',
+                    functions: [...new Set(wpFunctions)],
+                    dependencyLevel: 'high'
+                });
+            }
+            
+            // 数据库依赖
+            if (content.includes('mysql') || content.includes('mysqli') || content.includes('PDO')) {
+                dependencies.external.push({
+                    name: 'MySQL数据库',
+                    type: 'database',
+                    critical: true
+                });
+            }
+        }
+        
+        // 文件间依赖
+        const includePatterns = [
+            /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+            /include\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+            /import\s+.*from\s+['"]([^'"]+)['"]/g
+        ];
+        
+        includePatterns.forEach(pattern => {
+            let match;
+            while ((match = pattern.exec(content)) !== null) {
+                dependencies.internal.push({
+                    file: match[1],
+                    type: 'file_dependency'
+                });
+            }
+        });
+        
+        return {
+            dependencies,
+            impactAnalysis: this.analyzeChangeImpact(dependencies),
+            riskAssessment: this.assessDependencyRisks(dependencies)
+        };
+    }
+
+    /**
+     * 性能分析
+     */
+    async performPerformanceAnalysis(content, extension, businessLogic) {
+        const issues = [];
+        const optimizations = [];
+        
+        // 数据库查询优化
+        if (content.includes('mysql_query') || content.includes('mysqli_query')) {
+            const queryCount = (content.match(/query\s*\(/g) || []).length;
+            if (queryCount > 5) {
+                issues.push({
+                    type: '数据库查询过多',
+                    impact: 'high',
+                    description: `检测到${queryCount}个数据库查询`,
+                    solution: '考虑查询优化、缓存或批量处理'
+                });
+            }
+        }
+        
+        // 循环优化
+        const loopCount = (content.match(/for\s*\(|while\s*\(|foreach\s*\(/g) || []).length;
+        if (loopCount > 3 && content.includes('query')) {
+            issues.push({
+                type: '循环中的数据库查询',
+                impact: 'critical',
+                description: 'N+1查询问题',
+                solution: '使用JOIN查询或预加载数据'
             });
         }
-
-        // 通用安全检查
-        this.checkGeneralSecurity(content, analysis, 'javascript');
+        
+        // 内存使用
+        if (content.includes('file_get_contents') && !content.includes('stream')) {
+            optimizations.push({
+                type: '内存优化',
+                description: '大文件读取可能消耗大量内存',
+                suggestion: '使用流式处理或分块读取'
+            });
+        }
+        
+        return {
+            performanceScore: this.calculatePerformanceScore(issues),
+            issues,
+            optimizations,
+            recommendations: this.generatePerformanceRecommendations(issues, optimizations)
+        };
     }
 
     /**
-     * 计算文件复杂度
+     * 生成智能改进建议
      */
-    calculateFileComplexity(analysis) {
-        let score = 0;
+    async generateIntelligentImprovementSuggestions(content, extension, businessLogic, quality, security, architecture) {
+        const suggestions = {
+            immediate: [],
+            shortTerm: [],
+            longTerm: [],
+            architecture: [],
+            business: []
+        };
         
-        score += analysis.functions.length * 2;
-        score += analysis.classes.length * 3;
-        score += Math.floor(analysis.lines / 100);
+        // 立即需要处理的问题
+        if (security.vulnerabilities.length > 0) {
+            suggestions.immediate.push({
+                priority: 'critical',
+                category: '安全性',
+                action: '修复安全漏洞',
+                details: security.vulnerabilities.map(v => v.description),
+                impact: '防止安全事故和数据泄露'
+            });
+        }
         
-        if (score < 10) return 'low';
-        if (score < 25) return 'medium';
-        return 'high';
+        // 短期改进建议
+        if (quality.score < 70) {
+            suggestions.shortTerm.push({
+                priority: 'high',
+                category: '代码质量',
+                action: '提升代码质量',
+                details: quality.recommendations,
+                impact: '提高代码可维护性和团队开发效率'
+            });
+        }
+        
+        // 长期架构建议
+        if (architecture.architecturalPattern === '过程式编程' && businessLogic.keyFunctions.length > 10) {
+            suggestions.longTerm.push({
+                priority: 'medium',
+                category: '架构重构',
+                action: '向面向对象架构迁移',
+                details: ['创建业务逻辑类', '实现单一责任原则', '提高代码复用性'],
+                impact: '提升系统的可扩展性和可维护性'
+            });
+        }
+        
+        // 业务逻辑优化
+        if (businessLogic.businessRules.length > 5 && !content.includes('class ')) {
+            suggestions.business.push({
+                priority: 'medium',
+                category: '业务逻辑',
+                action: '业务规则集中管理',
+                details: ['创建业务规则类', '实现配置化管理', '提高业务逻辑的可测试性'],
+                impact: '降低业务逻辑维护成本，提高系统灵活性'
+            });
+        }
+        
+        return suggestions;
+    }
+
+    // 辅助方法实现
+    extractFunctionContext(content, functionName) {
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes(`function ${functionName}`) || lines[i].includes(`${functionName}(`)) {
+                return lines.slice(i, i + 10).join('\n');
+            }
+        }
+        return '';
+    }
+
+    inferFunctionPurpose(functionName, context) {
+        const purposeMap = {
+            'get': '数据获取',
+            'set': '数据设置',
+            'save': '数据保存',
+            'delete': '数据删除',
+            'update': '数据更新',
+            'validate': '数据验证',
+            'sanitize': '数据清理',
+            'render': '页面渲染',
+            'handle': '事件处理',
+            'process': '业务处理'
+        };
+        
+        for (const [keyword, purpose] of Object.entries(purposeMap)) {
+            if (functionName.toLowerCase().includes(keyword)) {
+                return purpose;
+            }
+        }
+        
+        return '业务逻辑处理';
+    }
+
+    inferBusinessRole(functionName, context) {
+        if (context.includes('database') || context.includes('query')) {
+            return '数据访问层';
+        } else if (context.includes('validate') || context.includes('sanitize')) {
+            return '数据验证层';
+        } else if (context.includes('render') || context.includes('display')) {
+            return '表现层';
+        } else {
+            return '业务逻辑层';
+        }
+    }
+
+    isCommentLine(line, extension) {
+        const trimmed = line.trim();
+        if (extension === '.php') {
+            return trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*') || trimmed.startsWith('#');
+        } else if (extension === '.js' || extension === '.jsx') {
+            return trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*');
+        }
+        return false;
+    }
+
+    calculateAdvancedComplexity(content) {
+        const complexityKeywords = [
+            { pattern: '\\bif\\b', name: 'if' },
+            { pattern: '\\belse\\b', name: 'else' },
+            { pattern: '\\bfor\\b', name: 'for' },
+            { pattern: '\\bwhile\\b', name: 'while' },
+            { pattern: '\\bswitch\\b', name: 'switch' },
+            { pattern: '\\bcase\\b', name: 'case' },
+            { pattern: '\\bcatch\\b', name: 'catch' },
+            { pattern: '&&', name: '&&' },
+            { pattern: '\\|\\|', name: '||' },
+            { pattern: '\\?', name: '?' }
+        ];
+        let complexity = 1;
+        
+        complexityKeywords.forEach(item => {
+            try {
+                const matches = content.match(new RegExp(item.pattern, 'g'));
+                if (matches) {
+                    complexity += matches.length;
+                }
+            } catch (e) {
+                // 忽略正则表达式错误
+            }
+        });
+        
+        return complexity;
+    }
+
+    calculateMaintainabilityIndex(content, codeLines = null) {
+        if (!codeLines) {
+            codeLines = content.split('\n').filter(line => line.trim()).length;
+        }
+        
+        const complexity = this.calculateAdvancedComplexity(content);
+        const commentRatio = (content.match(/\/\/|\/\*|\*|#/g) || []).length / codeLines;
+        
+        // 简化的可维护性指数计算
+        let maintainabilityIndex = 100;
+        maintainabilityIndex -= Math.log(codeLines) * 5;
+        maintainabilityIndex -= complexity * 2;
+        maintainabilityIndex += commentRatio * 20;
+        
+        return Math.max(0, Math.min(100, maintainabilityIndex));
+    }
+
+    assessTechnicalDebt(content, extension) {
+        let debtScore = 0;
+        
+        // 代码异味检测
+        if (content.includes('TODO') || content.includes('FIXME') || content.includes('HACK')) {
+            debtScore += 2;
+        }
+        
+        // 重复代码检测
+        const lines = content.split('\n');
+        const duplicateLines = lines.length - new Set(lines).size;
+        if (duplicateLines > lines.length * 0.1) {
+            debtScore += 3;
+        }
+        
+        // 长函数检测
+        const functions = content.match(/function\s+\w+.*?(?=function|\Z)/gs) || [];
+        const longFunctions = functions.filter(func => func.split('\n').length > 50);
+        debtScore += longFunctions.length;
+        
+        return Math.min(10, debtScore);
+    }
+
+    assessReadability(content, extension) {
+        let readabilityScore = 100;
+        
+        const lines = content.split('\n');
+        const avgLineLength = lines.reduce((sum, line) => sum + line.length, 0) / lines.length;
+        
+        if (avgLineLength > 100) readabilityScore -= 20;
+        if (avgLineLength > 120) readabilityScore -= 10;
+        
+        // 命名质量评估
+        const variableNames = content.match(/\$\w+|\bvar\s+\w+|\blet\s+\w+|\bconst\s+\w+/g) || [];
+        const shortNames = variableNames.filter(name => name.length < 4);
+        if (shortNames.length > variableNames.length * 0.5) {
+            readabilityScore -= 15;
+        }
+        
+        return Math.max(0, readabilityScore);
+    }
+
+    assessTestIndicators(content) {
+        const testKeywords = ['test', 'spec', 'assert', 'expect', 'mock', 'stub'];
+        const hasTests = testKeywords.some(keyword => content.toLowerCase().includes(keyword));
+        return hasTests ? 80 : 20;
+    }
+
+    generateQualityRecommendations(metrics) {
+        const recommendations = [];
+        
+        if (metrics.commentRatio < 0.15) {
+            recommendations.push('增加代码注释，提高代码可读性');
+        }
+        
+        if (metrics.codeComplexity > 30) {
+            recommendations.push('降低代码复杂度，考虑函数拆分');
+        }
+        
+        if (metrics.maintainabilityIndex < 60) {
+            recommendations.push('重构代码以提高可维护性');
+        }
+        
+        if (metrics.technicalDebt > 5) {
+            recommendations.push('处理技术债务，清理代码异味');
+        }
+        
+        return recommendations;
+    }
+
+    calculateSecurityScore(vulnerabilities, warnings, strengths) {
+        let score = 100;
+        
+        vulnerabilities.forEach(vuln => {
+            if (vuln.severity === 'critical') score -= 30;
+            else if (vuln.severity === 'high') score -= 20;
+            else score -= 10;
+        });
+        
+        warnings.forEach(() => score -= 5);
+        strengths.forEach(() => score += 10);
+        
+        return Math.max(0, Math.min(100, score));
+    }
+
+    calculateCyclomaticComplexity(content) {
+        const keywords = [
+            { pattern: '\\bif\\b', name: 'if' },
+            { pattern: '\\belse\\b', name: 'else' },
+            { pattern: '\\belseif\\b', name: 'elseif' },
+            { pattern: '\\bfor\\b', name: 'for' },
+            { pattern: '\\bforeach\\b', name: 'foreach' },
+            { pattern: '\\bwhile\\b', name: 'while' },
+            { pattern: '\\bdo\\b', name: 'do' },
+            { pattern: '\\bswitch\\b', name: 'switch' },
+            { pattern: '\\bcase\\b', name: 'case' },
+            { pattern: '\\bcatch\\b', name: 'catch' },
+            { pattern: '&&', name: '&&' },
+            { pattern: '\\|\\|', name: '||' }
+        ];
+        let complexity = 1;
+        
+        keywords.forEach(item => {
+            try {
+                const regex = new RegExp(item.pattern, 'g');
+                const matches = content.match(regex);
+                if (matches) complexity += matches.length;
+            } catch (e) {
+                // 忽略正则表达式错误
+            }
+        });
+        
+        return complexity;
+    }
+
+    calculateCognitiveComplexity(content) {
+        // 认知复杂度的简化计算
+        let complexity = 0;
+        const lines = content.split('\n');
+        let nestingLevel = 0;
+        
+        lines.forEach(line => {
+            const trimmed = line.trim();
+            
+            if (trimmed.includes('if') || trimmed.includes('for') || trimmed.includes('while')) {
+                complexity += (1 + nestingLevel);
+                if (trimmed.includes('{')) nestingLevel++;
+            }
+            
+            if (trimmed.includes('}')) {
+                nestingLevel = Math.max(0, nestingLevel - 1);
+            }
+        });
+        
+        return complexity;
+    }
+
+    assessCoupling(content, extension) {
+        // 耦合度评估
+        const externalReferences = (content.match(/require|include|import|wp_/g) || []).length;
+        if (externalReferences > 10) return 'high';
+        if (externalReferences > 5) return 'medium';
+        return 'low';
+    }
+
+    assessCohesion(content, extension) {
+        // 内聚性评估
+        const functions = (content.match(/function\s+\w+/g) || []).length;
+        const classes = (content.match(/class\s+\w+/g) || []).length;
+        
+        if (classes > 0 && functions / classes < 10) return 'high';
+        if (classes > 0 && functions / classes < 20) return 'medium';
+        return 'low';
+    }
+
+    determineOverallComplexity(metrics) {
+        if (metrics.cyclomaticComplexity > 50 || metrics.cognitiveComplexity > 30) return 'very_high';
+        if (metrics.cyclomaticComplexity > 20 || metrics.cognitiveComplexity > 15) return 'high';
+        if (metrics.cyclomaticComplexity > 10 || metrics.cognitiveComplexity > 10) return 'medium';
+        return 'low';
+    }
+
+    determineMaintainabilityLevel(metrics) {
+        if (metrics.maintainabilityIndex > 80) return 'excellent';
+        if (metrics.maintainabilityIndex > 60) return 'good';
+        if (metrics.maintainabilityIndex > 40) return 'fair';
+        return 'poor';
+    }
+
+    determineRefactoringPriority(metrics) {
+        if (metrics.cyclomaticComplexity > 30 && metrics.maintainabilityIndex < 50) return 'urgent';
+        if (metrics.cyclomaticComplexity > 20 || metrics.maintainabilityIndex < 60) return 'high';
+        if (metrics.cyclomaticComplexity > 10 || metrics.maintainabilityIndex < 70) return 'medium';
+        return 'low';
+    }
+
+    generateComplexityRecommendations(metrics) {
+        const recommendations = [];
+        
+        if (metrics.cyclomaticComplexity > 20) {
+            recommendations.push('将复杂函数分解为更小的函数');
+        }
+        
+        if (metrics.couplingLevel === 'high') {
+            recommendations.push('减少外部依赖，提高模块独立性');
+        }
+        
+        if (metrics.cohesionLevel === 'low') {
+            recommendations.push('提高类和模块的内聚性');
+        }
+        
+        return recommendations;
+    }
+
+    analyzeChangeImpact(dependencies) {
+        const impact = {
+            level: 'low',
+            affectedSystems: [],
+            recommendations: []
+        };
+        
+        if (dependencies.frameworks.length > 0) {
+            impact.level = 'high';
+            impact.affectedSystems.push('框架依赖系统');
+            impact.recommendations.push('谨慎修改，确保向后兼容性');
+        }
+        
+        if (dependencies.external.some(dep => dep.critical)) {
+            impact.level = 'critical';
+            impact.affectedSystems.push('核心业务系统');
+            impact.recommendations.push('需要全面测试和回滚计划');
+        }
+        
+        return impact;
+    }
+
+    assessDependencyRisks(dependencies) {
+        const risks = [];
+        
+        if (dependencies.external.length > 5) {
+            risks.push({
+                type: '依赖过多',
+                level: 'medium',
+                description: '外部依赖较多可能影响系统稳定性'
+            });
+        }
+        
+        return risks;
+    }
+
+    calculatePerformanceScore(issues) {
+        let score = 100;
+        
+        issues.forEach(issue => {
+            if (issue.impact === 'critical') score -= 30;
+            else if (issue.impact === 'high') score -= 20;
+            else score -= 10;
+        });
+        
+        return Math.max(0, score);
+    }
+
+    generatePerformanceRecommendations(issues, optimizations) {
+        const recommendations = [];
+        
+        if (issues.some(issue => issue.type.includes('数据库'))) {
+            recommendations.push('优化数据库查询，使用索引和缓存');
+        }
+        
+        if (issues.some(issue => issue.type.includes('循环'))) {
+            recommendations.push('优化算法复杂度，减少不必要的循环');
+        }
+        
+        optimizations.forEach(opt => {
+            recommendations.push(opt.suggestion);
+        });
+        
+        return recommendations;
     }
 
     /**
-     * 生成文件文档内容
+     * 保存文件分析报告到AI助手文档目录
      */
-    generateFileDocContent(filePath, content, fileAnalysis, projectAnalysis) {
+    async saveIntelligentFileAnalysisReport(analysisResult) {
+        try {
+            const fileName = analysisResult.fileInfo.name;
+            const baseName = path.basename(fileName, path.extname(fileName));
+            const reportFileName = `智能文件分析报告-${baseName}-${Date.now()}.md`;
+            const reportPath = path.join(this.docsDir, reportFileName);
+            
+            const report = this.generateIntelligentAnalysisMarkdown(analysisResult);
+            
+            // 确保目录存在
+            this.ensureDirectories();
+            
+            // 写入报告文件
+            fs.writeFileSync(reportPath, report, 'utf8');
+            
+            console.log(`📄 智能分析报告已保存: ${reportFileName}`);
+            
+            return reportPath;
+            
+        } catch (error) {
+            throw new Error(`保存分析报告失败: ${error.message}`);
+        }
+    }
+
+    /**
+     * 生成智能文件分析的详细Markdown报告
+     */
+    generateIntelligentAnalysisMarkdown(analysisResult) {
+        const { 
+            fileInfo, 
+            intelligentType, 
+            businessLogic, 
+            architecture, 
+            quality, 
+            security, 
+            complexity, 
+            dependencies, 
+            performance, 
+            improvements, 
+            timestamp 
+        } = analysisResult;
+        
         const lines = [];
-        const fileName = path.basename(filePath);
         
-        lines.push(`# 📄 ${fileName} - 文件文档\n`);
-        lines.push(`**文件路径**: ${filePath}`);
-        lines.push(`**文件类型**: ${fileAnalysis.language}`);
-        lines.push(`**文件大小**: ${Math.round(fileAnalysis.size / 1024 * 100) / 100} KB`);
-        lines.push(`**代码行数**: ${fileAnalysis.lines}`);
-        lines.push(`**复杂度**: ${fileAnalysis.complexity}`);
-        
-        if (fileAnalysis.type === 'wordpress') {
-            lines.push(`**WordPress类型**: ${fileAnalysis.wordpressType}`);
-        }
-        
-        lines.push(`**生成时间**: ${new Date().toLocaleString()}\n`);
-
-        // 文件概述
-        lines.push('## 📋 文件概述\n');
-        lines.push(this.generateFileOverview(fileName, fileAnalysis, content));
+        // 文档头部
+        lines.push(`# 🤖 AI智能文件分析报告`);
+        lines.push(`## 📄 ${fileInfo.name}`);
         lines.push('');
-
-        // 功能分析
-        if (fileAnalysis.functions.length > 0 || fileAnalysis.classes.length > 0) {
-            lines.push('## 🔧 功能分析\n');
-            
-            if (fileAnalysis.classes.length > 0) {
-                lines.push('### 类定义\n');
-                fileAnalysis.classes.forEach(cls => {
-                    lines.push(`- **${cls.name}**: ${this.generateGenericDescription(cls.name, 'class')}`);
-                });
-                lines.push('');
-            }
-            
-            if (fileAnalysis.functions.length > 0) {
-                lines.push('### 函数定义\n');
-                fileAnalysis.functions.forEach(func => {
-                    lines.push(`- **${func.name}**: ${this.generateFunctionDescription(func.name, content)}`);
-                });
-                lines.push('');
-            }
-        }
-
-        // 框架特定功能
-        if (fileAnalysis.framework) {
-            lines.push(`## 🎯 ${fileAnalysis.framework.toUpperCase()}框架功能\n`);
-            lines.push(this.generateFrameworkFunctionality(content, fileAnalysis));
+        lines.push(`**分析时间**: ${new Date(timestamp).toLocaleString('zh-CN')}`);
+        lines.push(`**文件路径**: \`${fileInfo.path}\``);
+        lines.push(`**AI智能识别**: ${intelligentType.specificPurpose || intelligentType.primaryType}`);
+        lines.push('');
+        
+        // 执行摘要
+        lines.push('## 📋 执行摘要');
+        lines.push('');
+        lines.push(`**文件用途**: ${businessLogic.mainPurpose || '业务逻辑处理文件'}`);
+        lines.push(`**业务价值**: ${businessLogic.businessValue || '为系统提供核心功能支持'}`);
+        lines.push(`**技术分类**: ${intelligentType.technicalClassification}`);
+        lines.push(`**架构模式**: ${architecture.architecturalPattern}`);
+        lines.push(`**质量评分**: ${quality.score}/100 (${this.getQualityLevelChinese(quality.level)})`);
+        lines.push(`**安全评分**: ${security.securityScore}/100 (${this.getSecurityLevelChinese(security.riskLevel)})`);
+        lines.push('');
+        
+        // 文件基本信息
+        lines.push('## 📊 文件信息概览');
+        lines.push('');
+        lines.push('| 属性 | 值 | 说明 |');
+        lines.push('|------|-----|------|');
+        lines.push(`| 文件名 | ${fileInfo.name} | 当前分析的文件 |`);
+        lines.push(`| 文件大小 | ${(fileInfo.size / 1024).toFixed(2)} KB | 文件物理大小 |`);
+        lines.push(`| 代码行数 | ${fileInfo.lines} 行 | 包含所有行数 |`);
+        lines.push(`| 最后修改 | ${fileInfo.lastModified.toLocaleString('zh-CN')} | 文件修改时间 |`);
+        lines.push(`| 技术栈 | ${intelligentType.primaryType} | 使用的技术 |`);
+        lines.push('');
+        
+        // 业务逻辑深度分析
+        if (businessLogic.mainPurpose) {
+            lines.push('## 🎯 业务逻辑深度分析');
             lines.push('');
+            lines.push(`**核心目的**: ${businessLogic.mainPurpose}`);
+            lines.push('');
+            
+            if (businessLogic.keyFunctions.length > 0) {
+                lines.push('### 🔧 核心功能分析');
+                lines.push('');
+                lines.push('| 函数名 | 业务用途 | 技术角色 |');
+                lines.push('|--------|----------|----------|');
+                businessLogic.keyFunctions.forEach(func => {
+                    lines.push(`| \`${func.name}\` | ${func.purpose} | ${func.businessRole} |`);
+                });
+                lines.push('');
+            }
+            
+            if (businessLogic.businessRules.length > 0) {
+                lines.push('### 📋 业务规则识别');
+                lines.push('');
+                businessLogic.businessRules.forEach((rule, index) => {
+                    lines.push(`${index + 1}. **${rule}**`);
+                });
+                lines.push('');
+            }
+            
+            if (businessLogic.dataFlow) {
+                lines.push('### 🔄 数据流分析');
+                lines.push('');
+                lines.push(`**数据流向**: ${businessLogic.dataFlow}`);
+                lines.push('');
+            }
+            
+            if (businessLogic.userInteractions.length > 0) {
+                lines.push('### 👤 用户交互模式');
+                lines.push('');
+                businessLogic.userInteractions.forEach((interaction, index) => {
+                    lines.push(`- ${interaction}`);
+                });
+                lines.push('');
+            }
+            
+            if (businessLogic.integrations.length > 0) {
+                lines.push('### 🔗 系统集成分析');
+                lines.push('');
+                businessLogic.integrations.forEach(integration => {
+                    lines.push(`- **${integration}**: 与外部系统的集成点`);
+                });
+                lines.push('');
+            }
         }
-
-        // 代码示例
-        lines.push('## 💡 使用示例\n');
-        lines.push(this.generateUsageExamples(fileName, fileAnalysis, content));
+        
+        // 架构设计分析
+        lines.push('## 🏗️ 架构设计分析');
         lines.push('');
-
-        // 安全分析
-        if (fileAnalysis.security.issues.length > 0) {
-            lines.push('## 🛡️ 安全分析\n');
-            lines.push('### ⚠️ 发现的安全问题\n');
-            fileAnalysis.security.issues.forEach(issue => {
-                lines.push(`- ${issue}`);
+        lines.push(`**架构模式**: ${architecture.architecturalPattern}`);
+        lines.push(`**代码组织**: ${architecture.codeOrganization}`);
+        lines.push('');
+        
+        if (architecture.designPatterns.length > 0) {
+            lines.push('### 🎨 设计模式识别');
+            lines.push('');
+            architecture.designPatterns.forEach(pattern => {
+                lines.push(`- **${pattern}**: 提升代码结构和可维护性`);
             });
             lines.push('');
+        }
+        
+        if (architecture.scalabilityFactors.length > 0) {
+            lines.push('### 📈 可扩展性因素');
+            lines.push('');
+            architecture.scalabilityFactors.forEach(factor => {
+                lines.push(`- ${factor}`);
+            });
+            lines.push('');
+        }
+        
+        // 代码质量深度分析
+        lines.push('## 📊 代码质量深度分析');
+        lines.push('');
+        lines.push(`**综合评分**: ${quality.score}/100 (${this.getQualityLevelChinese(quality.level)})`);
+        lines.push('');
+        
+        lines.push('### 📈 质量指标详解');
+        lines.push('');
+        lines.push('| 指标 | 数值 | 评估 | 影响 |');
+        lines.push('|------|------|------|------|');
+        lines.push(`| 总行数 | ${quality.metrics.totalLines} | ${quality.metrics.totalLines > 500 ? '文件较大' : '合理大小'} | 维护难度 |`);
+        lines.push(`| 代码行数 | ${quality.metrics.codeLines} | ${quality.metrics.codeLines > 300 ? '逻辑复杂' : '逻辑适中'} | 理解难度 |`);
+        lines.push(`| 注释覆盖率 | ${(quality.metrics.commentRatio * 100).toFixed(1)}% | ${quality.metrics.commentRatio > 0.2 ? '注释充足' : '注释不足'} | 可读性 |`);
+        lines.push(`| 可维护性指数 | ${quality.metrics.maintainabilityIndex.toFixed(1)} | ${quality.metrics.maintainabilityIndex > 70 ? '易维护' : '难维护'} | 开发效率 |`);
+        lines.push(`| 技术债务等级 | ${quality.metrics.technicalDebt}/10 | ${quality.metrics.technicalDebt < 3 ? '债务较少' : '需要重构'} | 长期成本 |`);
+        lines.push(`| 可读性评分 | ${quality.metrics.readabilityScore} | ${quality.metrics.readabilityScore > 80 ? '易读' : '难读'} | 团队协作 |`);
+        lines.push('');
+        
+        if (quality.recommendations.length > 0) {
+            lines.push('### 💡 质量改进建议');
+            lines.push('');
+            quality.recommendations.forEach((rec, index) => {
+                lines.push(`${index + 1}. ${rec}`);
+            });
+            lines.push('');
+        }
+        
+        // 安全性专业分析
+        lines.push('## 🛡️ 安全性专业分析');
+        lines.push('');
+        lines.push(`**安全评分**: ${security.securityScore}/100`);
+        lines.push(`**风险级别**: ${this.getSecurityLevelChinese(security.riskLevel)}`);
+        lines.push(`**问题总数**: ${security.totalIssues} 个`);
+        lines.push('');
+        
+        if (security.vulnerabilities.length > 0) {
+            lines.push('### 🚨 严重安全漏洞');
+            lines.push('');
+            security.vulnerabilities.forEach((vuln, index) => {
+                lines.push(`#### ${index + 1}. ${vuln.type} (${vuln.severity.toUpperCase()})`);
+                lines.push(`**问题描述**: ${vuln.description}`);
+                lines.push(`**修复建议**: ${vuln.recommendation}`);
+                lines.push('');
+            });
+        }
+        
+        if (security.warnings.length > 0) {
+            lines.push('### ⚠️ 安全警告');
+            lines.push('');
+            security.warnings.forEach((warning, index) => {
+                lines.push(`#### ${index + 1}. ${warning.type}`);
+                lines.push(`**风险描述**: ${warning.description}`);
+                lines.push(`**建议措施**: ${warning.recommendation}`);
+                lines.push('');
+            });
+        }
+        
+        if (security.strengths.length > 0) {
+            lines.push('### ✅ 安全优势');
+            lines.push('');
+            security.strengths.forEach(strength => {
+                lines.push(`- ${strength}`);
+            });
+            lines.push('');
+        }
+        
+        // 复杂度和可维护性分析
+        lines.push('## 🔍 复杂度和可维护性分析');
+        lines.push('');
+        lines.push(`**整体复杂度**: ${complexity.overallComplexity}`);
+        lines.push(`**可维护性等级**: ${complexity.maintainabilityLevel}`);
+        lines.push(`**重构优先级**: ${complexity.refactoringPriority}`);
+        lines.push('');
+        
+        lines.push('### 📊 复杂度指标');
+        lines.push('');
+        lines.push('| 指标 | 数值 | 等级 | 说明 |');
+        lines.push('|------|------|------|------|');
+        lines.push(`| 圈复杂度 | ${complexity.cyclomaticComplexity} | ${complexity.cyclomaticComplexity < 10 ? '简单' : complexity.cyclomaticComplexity < 20 ? '中等' : '复杂'} | 代码逻辑复杂程度 |`);
+        lines.push(`| 认知复杂度 | ${complexity.cognitiveComplexity} | ${complexity.cognitiveComplexity < 15 ? '易理解' : '难理解'} | 人类理解难度 |`);
+        lines.push(`| 耦合程度 | ${complexity.couplingLevel} | ${complexity.couplingLevel} | 模块间依赖关系 |`);
+        lines.push(`| 内聚程度 | ${complexity.cohesionLevel} | ${complexity.cohesionLevel} | 模块内功能相关性 |`);
+        lines.push('');
+        
+        if (complexity.recommendations.length > 0) {
+            lines.push('### 🔧 复杂度优化建议');
+            lines.push('');
+            complexity.recommendations.forEach((rec, index) => {
+                lines.push(`${index + 1}. ${rec}`);
+            });
+            lines.push('');
+        }
+        
+        // 依赖关系和影响分析
+        if (dependencies) {
+            lines.push('## 🔗 依赖关系和影响分析');
+            lines.push('');
             
-            if (fileAnalysis.security.suggestions.length > 0) {
-                lines.push('### 🔒 安全建议\n');
-                fileAnalysis.security.suggestions.forEach(suggestion => {
-                    lines.push(`- ${suggestion}`);
+            if (dependencies.dependencies.frameworks.length > 0) {
+                lines.push('### 🏗️ 框架依赖');
+                lines.push('');
+                dependencies.dependencies.frameworks.forEach(framework => {
+                    lines.push(`**${framework.name}** (依赖级别: ${framework.dependencyLevel})`);
+                    if (framework.functions) {
+                        lines.push(`- 使用的函数: ${framework.functions.slice(0, 10).join(', ')}${framework.functions.length > 10 ? '...' : ''}`);
+                    }
+                    lines.push('');
+                });
+            }
+            
+            if (dependencies.dependencies.external.length > 0) {
+                lines.push('### 🌐 外部依赖');
+                lines.push('');
+                dependencies.dependencies.external.forEach(dep => {
+                    lines.push(`- **${dep.name}** (${dep.type})${dep.critical ? ' - 关键依赖' : ''}`);
                 });
                 lines.push('');
             }
+            
+            if (dependencies.impactAnalysis) {
+                lines.push('### 📊 变更影响分析');
+                lines.push('');
+                lines.push(`**影响级别**: ${dependencies.impactAnalysis.level}`);
+                if (dependencies.impactAnalysis.affectedSystems.length > 0) {
+                    lines.push('**受影响系统**:');
+                    dependencies.impactAnalysis.affectedSystems.forEach(system => {
+                        lines.push(`- ${system}`);
+                    });
+                }
+                lines.push('');
+            }
         }
-
-        // 改进建议
-        lines.push('## 📈 改进建议\n');
-        const suggestions = this.generateFileSuggestions(fileAnalysis, projectAnalysis);
-        suggestions.forEach(suggestion => {
-            lines.push(`- ${suggestion}`);
-        });
+        
+        // 性能分析
+        if (performance) {
+            lines.push('## ⚡ 性能分析');
+            lines.push('');
+            lines.push(`**性能评分**: ${performance.performanceScore}/100`);
+            lines.push('');
+            
+            if (performance.issues.length > 0) {
+                lines.push('### 🚨 性能问题');
+                lines.push('');
+                performance.issues.forEach((issue, index) => {
+                    lines.push(`#### ${index + 1}. ${issue.type} (${issue.impact.toUpperCase()})`);
+                    lines.push(`**问题描述**: ${issue.description}`);
+                    lines.push(`**解决方案**: ${issue.solution}`);
+                    lines.push('');
+                });
+            }
+            
+            if (performance.optimizations.length > 0) {
+                lines.push('### 🔧 性能优化建议');
+                lines.push('');
+                performance.optimizations.forEach((opt, index) => {
+                    lines.push(`${index + 1}. **${opt.type}**: ${opt.description}`);
+                    lines.push(`   - 建议: ${opt.suggestion}`);
+                    lines.push('');
+                });
+            }
+        }
+        
+        // AI智能改进建议
+        if (improvements) {
+            lines.push('## 🚀 AI智能改进建议');
+            lines.push('');
+            
+            if (improvements.immediate.length > 0) {
+                lines.push('### 🔴 立即处理 (CRITICAL)');
+                lines.push('');
+                improvements.immediate.forEach((item, index) => {
+                    lines.push(`#### ${index + 1}. ${item.action} (${item.category})`);
+                    lines.push(`**优先级**: ${item.priority.toUpperCase()}`);
+                    lines.push(`**业务影响**: ${item.impact}`);
+                    lines.push('**具体措施**:');
+                    item.details.forEach(detail => {
+                        lines.push(`- ${detail}`);
+                    });
+                    lines.push('');
+                });
+            }
+            
+            if (improvements.shortTerm.length > 0) {
+                lines.push('### 🟡 短期改进 (1-2周内)');
+                lines.push('');
+                improvements.shortTerm.forEach((item, index) => {
+                    lines.push(`#### ${index + 1}. ${item.action} (${item.category})`);
+                    lines.push(`**业务影响**: ${item.impact}`);
+                    lines.push('**改进措施**:');
+                    item.details.forEach(detail => {
+                        lines.push(`- ${detail}`);
+                    });
+                    lines.push('');
+                });
+            }
+            
+            if (improvements.longTerm.length > 0) {
+                lines.push('### 🟢 长期规划 (1个月以上)');
+                lines.push('');
+                improvements.longTerm.forEach((item, index) => {
+                    lines.push(`#### ${index + 1}. ${item.action} (${item.category})`);
+                    lines.push(`**战略价值**: ${item.impact}`);
+                    lines.push('**实施路径**:');
+                    item.details.forEach(detail => {
+                        lines.push(`- ${detail}`);
+                    });
+                    lines.push('');
+                });
+            }
+            
+            if (improvements.business.length > 0) {
+                lines.push('### 💼 业务优化建议');
+                lines.push('');
+                improvements.business.forEach((item, index) => {
+                    lines.push(`#### ${index + 1}. ${item.action}`);
+                    lines.push(`**业务价值**: ${item.impact}`);
+                    lines.push('**优化方向**:');
+                    item.details.forEach(detail => {
+                        lines.push(`- ${detail}`);
+                    });
+                    lines.push('');
+                });
+            }
+        }
+        
+        // 总结和行动计划
+        lines.push('## 📝 总结和行动计划');
         lines.push('');
-
-        // 相关文件
-        lines.push('## 🔗 相关文件\n');
-        lines.push(this.generateRelatedFiles(filePath, projectAnalysis));
+        lines.push('### 🎯 核心发现');
         lines.push('');
-
-        lines.push('---\n*此文档由 AI 开发辅助系统自动生成*');
+        lines.push(`1. **业务价值**: ${businessLogic.businessValue || '该文件在系统中发挥重要作用'}`);
+        lines.push(`2. **技术特征**: ${intelligentType.technicalClassification}`);
+        lines.push(`3. **质量状况**: ${quality.level} (${quality.score}/100分)`);
+        lines.push(`4. **安全状况**: ${security.riskLevel} (${security.securityScore}/100分)`);
+        lines.push(`5. **维护难度**: ${complexity.maintainabilityLevel}`);
+        lines.push('');
+        
+        lines.push('### 📋 优先行动清单');
+        lines.push('');
+        let actionCount = 1;
+        
+        if (security.vulnerabilities.length > 0) {
+            lines.push(`${actionCount++}. **立即修复安全漏洞** - 防止安全事故`);
+        }
+        
+        if (quality.score < 70) {
+            lines.push(`${actionCount++}. **提升代码质量** - 改善维护性和可读性`);
+        }
+        
+        if (complexity.refactoringPriority === 'urgent' || complexity.refactoringPriority === 'high') {
+            lines.push(`${actionCount++}. **重构复杂代码** - 降低维护成本`);
+        }
+        
+        if (performance && performance.issues.length > 0) {
+            lines.push(`${actionCount++}. **优化性能问题** - 提升用户体验`);
+        }
+        
+        lines.push('');
+        
+        // 结尾
+        lines.push('---');
+        lines.push('');
+        lines.push('**📊 分析统计**');
+        lines.push(`- 分析引擎: AI开发辅助系统 v1.2.0`);
+        lines.push(`- 分析时间: ${new Date().toLocaleString('zh-CN')}`);
+        lines.push(`- 分析深度: 业务逻辑 + 技术架构 + 安全性 + 性能`);
+        lines.push(`- 报告类型: 智能综合分析报告`);
+        lines.push('');
+        lines.push('*此报告由AI智能分析引擎生成，基于文件的实际内容和业务逻辑进行深度分析*');
         
         return lines.join('\n');
     }
 
     /**
-     * 智能生成文件概述
+     * 获取安全级别的中文描述
      */
-    generateFileOverview(fileName, fileAnalysis, content) {
-        const framework = fileAnalysis.framework;
-        const purposes = fileAnalysis.purposes;
-        
-        let overview = `这是一个${fileAnalysis.language}文件`;
-        
-        if (framework) {
-            overview += `，属于${framework}框架`;
-        }
-        
-        if (purposes.length > 0) {
-            const purposeMap = {
-                'logic': '业务逻辑',
-                'database': '数据库操作',
-                'routing': '路由处理',
-                'testing': '测试代码',
-                'configuration': '配置文件',
-                'general': '通用功能'
-            };
-            const purposeTexts = purposes.map(p => purposeMap[p] || p);
-            overview += `，主要用于${purposeTexts.join('、')}`;
-        }
-        
-        overview += `，包含${fileAnalysis.lines}行代码`;
-        
-        if (fileAnalysis.functions.length > 0) {
-            overview += `，定义了${fileAnalysis.functions.length}个函数`;
-        }
-        
-        if (fileAnalysis.classes.length > 0) {
-            overview += `，包含${fileAnalysis.classes.length}个类`;
-        }
-        
-        return overview + '。';
+    getSecurityLevelChinese(level) {
+        const levels = {
+            'very low': '极低风险',
+            'low': '低风险',
+            'medium': '中等风险',
+            'high': '高风险',
+            'critical': '严重风险'
+        };
+        return levels[level] || level;
     }
 
     /**
-     * 智能生成函数描述
+     * 获取质量级别的中文描述
      */
-    generateFunctionDescription(functionName, content) {
-        // 通用函数名模式分析
-        const patterns = {
-            'init|initialize|setup': '初始化函数',
-            'save|store|create|insert': '数据保存函数',
-            'get|fetch|load|read|retrieve': '数据获取函数',
-            'update|modify|edit|change': '数据更新函数',
-            'delete|remove|destroy': '数据删除函数',
-            'validate|check|verify': '数据验证函数',
-            'render|display|show|draw': '内容渲染函数',
-            'handle|process|execute': '业务处理函数',
-            'connect|disconnect|open|close': '连接管理函数',
-            'send|receive|transmit': '数据传输函数'
+    getQualityLevelChinese(level) {
+        const levels = {
+            'excellent': '优秀',
+            'good': '良好',
+            'fair': '一般',
+            'poor': '较差',
+            'very poor': '很差'
         };
-
-        for (const [pattern, description] of Object.entries(patterns)) {
-            if (new RegExp(pattern, 'i').test(functionName)) {
-                return description;
-            }
-        }
-
-        return '自定义函数，执行特定业务逻辑';
-    }
-
-    /**
-     * 智能生成框架功能说明
-     */
-    generateFrameworkFunctionality(content, fileAnalysis) {
-        const framework = fileAnalysis.framework;
-        if (!framework) return '- 包含通用的业务逻辑';
-
-        const frameworkFeatures = {
-            wordpress: this.getWordPressFeatures(content),
-            laravel: this.getLaravelFeatures(content),
-            django: this.getDjangoFeatures(content),
-            react: this.getReactFeatures(content),
-            vue: this.getVueFeatures(content),
-            express: this.getExpressFeatures(content)
-        };
-
-        return frameworkFeatures[framework] || `- 使用${framework}框架的相关功能`;
-    }
-
-    /**
-     * 通用框架特性检测
-     */
-    getWordPressFeatures(content) {
-        const features = [];
-        const patterns = {
-            'add_action': '动作钩子注册',
-            'add_filter': '过滤器钩子注册',
-            'wp_enqueue': '资源文件加载',
-            'register_post_type': '自定义文章类型',
-            'wp_ajax': 'AJAX请求处理'
-        };
-
-        Object.entries(patterns).forEach(([pattern, desc]) => {
-            if (content.includes(pattern)) {
-                features.push(`- **${desc}**: 使用${pattern}实现相关功能`);
-            }
-        });
-
-        return features.length > 0 ? features.join('\n') : '- WordPress相关功能';
-    }
-
-    getLaravelFeatures(content) {
-        const features = [];
-        const patterns = {
-            'Route::': '路由定义',
-            'Schema::': '数据库迁移',
-            'Model': '数据模型',
-            'Controller': '控制器逻辑'
-        };
-
-        Object.entries(patterns).forEach(([pattern, desc]) => {
-            if (content.includes(pattern)) {
-                features.push(`- **${desc}**: Laravel框架${desc.toLowerCase()}功能`);
-            }
-        });
-
-        return features.length > 0 ? features.join('\n') : '- Laravel框架功能';
-    }
-
-    getDjangoFeatures(content) {
-        const features = [];
-        const patterns = {
-            'models.Model': '数据模型定义',
-            'HttpResponse': 'HTTP响应处理',
-            'url(': 'URL路由配置',
-            'render': '模板渲染'
-        };
-
-        Object.entries(patterns).forEach(([pattern, desc]) => {
-            if (content.includes(pattern)) {
-                features.push(`- **${desc}**: Django框架${desc.toLowerCase()}功能`);
-            }
-        });
-
-        return features.length > 0 ? features.join('\n') : '- Django框架功能';
-    }
-
-    getReactFeatures(content) {
-        const features = [];
-        const patterns = {
-            'useState': 'React状态管理',
-            'useEffect': 'React副作用处理',
-            'Component': 'React组件定义',
-            'props': 'React组件属性'
-        };
-
-        Object.entries(patterns).forEach(([pattern, desc]) => {
-            if (content.includes(pattern)) {
-                features.push(`- **${desc}**: ${desc}功能`);
-            }
-        });
-
-        return features.length > 0 ? features.join('\n') : '- React组件功能';
-    }
-
-    getVueFeatures(content) {
-        const features = [];
-        const patterns = {
-            '<template>': 'Vue模板结构',
-            '<script>': 'Vue组件逻辑',
-            'data()': 'Vue数据定义',
-            'methods': 'Vue方法定义'
-        };
-
-        Object.entries(patterns).forEach(([pattern, desc]) => {
-            if (content.includes(pattern)) {
-                features.push(`- **${desc}**: ${desc}功能`);
-            }
-        });
-
-        return features.length > 0 ? features.join('\n') : '- Vue组件功能';
-    }
-
-    getExpressFeatures(content) {
-        const features = [];
-        const patterns = {
-            'app.get': 'GET路由处理',
-            'app.post': 'POST路由处理',
-            'middleware': '中间件使用',
-            'express()': 'Express应用初始化'
-        };
-
-        Object.entries(patterns).forEach(([pattern, desc]) => {
-            if (content.includes(pattern)) {
-                features.push(`- **${desc}**: ${desc}功能`);
-            }
-        });
-
-        return features.length > 0 ? features.join('\n') : '- Express服务器功能';
-    }
-
-    /**
-     * 智能生成使用示例
-     */
-    generateUsageExamples(fileName, fileAnalysis, content) {
-        const framework = fileAnalysis.framework;
-        const language = fileAnalysis.language;
-        
-        // 根据框架生成示例
-        if (framework === 'wordpress') {
-            if (fileName === 'functions.php') {
-                return '```php\n// 在主题的functions.php中添加功能\n// 文件会自动被WordPress加载\n```';
-            }
-            return '```php\n// WordPress相关功能，通过插件或主题激活\n// 遵循WordPress开发标准\n```';
-        }
-        
-        if (framework === 'laravel') {
-            return '```php\n// Laravel框架文件\n// 通过路由或服务容器调用相关功能\n```';
-        }
-        
-        if (framework === 'react') {
-            return '```jsx\n// React组件使用\n// import Component from \'./path/to/component\'\n// <Component {...props} />\n```';
-        }
-        
-        if (framework === 'vue') {
-            return '```vue\n<!-- Vue组件使用 -->\n<!-- <component-name></component-name> -->\n```';
-        }
-        
-        if (framework === 'express') {
-            return '```javascript\n// Express路由或中间件\n// 通过app.use()或路由调用\n```';
-        }
-        
-        // 通用语言示例
-        if (language === 'javascript') {
-            return '```javascript\n// 在HTML中引入此文件\n// <script src="path/to/file.js"></script>\n```';
-        }
-        
-        if (language === 'python') {
-            return '```python\n# Python模块导入\n# import module_name\n# 或 from module_name import function_name\n```';
-        }
-        
-        return '```\n// 根据文件类型在适当的地方引入和使用\n```';
-    }
-
-    /**
-     * 智能生成文件改进建议
-     */
-    generateFileSuggestions(fileAnalysis, projectAnalysis) {
-        const suggestions = [];
-        
-        // 通用改进建议
-        if (!fileAnalysis.documentation) {
-            suggestions.push('添加详细的代码注释和函数文档');
-        }
-        
-        if (fileAnalysis.complexity === 'high') {
-            suggestions.push('考虑将复杂的函数拆分为更小的、更易维护的函数');
-        }
-        
-        if (fileAnalysis.lines > 500) {
-            suggestions.push('文件较大，考虑模块化拆分以提高可维护性');
-        }
-        
-        // 框架特定建议
-        if (fileAnalysis.framework) {
-            suggestions.push(`遵循${fileAnalysis.framework}框架的最佳实践和编码标准`);
-            
-            if (fileAnalysis.framework === 'wordpress') {
-                suggestions.push('使用WordPress标准的PHPDoc注释格式');
-                suggestions.push('确保代码符合WordPress编码规范');
-            } else if (fileAnalysis.framework === 'react') {
-                suggestions.push('考虑使用React Hooks优化组件逻辑');
-                suggestions.push('添加PropTypes或TypeScript类型定义');
-            } else if (fileAnalysis.framework === 'laravel') {
-                suggestions.push('使用Laravel的服务容器和依赖注入');
-                suggestions.push('遵循PSR-4自动加载标准');
-            }
-        }
-        
-        // 安全建议
-        if (fileAnalysis.security.suggestions.length > 0) {
-            suggestions.push(...fileAnalysis.security.suggestions);
-        }
-        
-        // 模式建议
-        if (fileAnalysis.patterns.length === 0) {
-            suggestions.push('考虑应用合适的设计模式来改善代码结构');
-        }
-        
-        // 测试建议
-        if (!fileAnalysis.purposes.includes('testing')) {
-            suggestions.push('为核心功能添加单元测试');
-        }
-        
-        return suggestions.length > 0 ? suggestions : ['代码结构良好，继续保持当前的开发实践'];
-    }
-
-    /**
-     * 智能生成相关文件
-     */
-    generateRelatedFiles(filePath, projectAnalysis) {
-        const fileName = path.basename(filePath);
-        const relatedFiles = [];
-        const directory = path.dirname(filePath);
-        
-        // 基于项目类型推荐相关文件
-        if (projectAnalysis.project.framework.includes('WordPress')) {
-            if (fileName === 'functions.php') {
-                relatedFiles.push('- style.css - 主题样式文件');
-                relatedFiles.push('- index.php - 主题主模板');
-                relatedFiles.push('- wp-config.php - WordPress配置文件');
-            } else if (directory.includes('wp-content/themes/')) {
-                relatedFiles.push('- functions.php - 主题函数文件');
-                relatedFiles.push('- style.css - 主题样式文件');
-            } else if (directory.includes('wp-content/plugins/')) {
-                relatedFiles.push('- 其他插件文件');
-                relatedFiles.push('- wp-config.php - WordPress配置文件');
-            }
-        } else if (projectAnalysis.project.framework.includes('Laravel')) {
-            if (fileName.includes('Controller')) {
-                relatedFiles.push('- routes/web.php - 路由定义');
-                relatedFiles.push('- resources/views/ - 视图模板');
-                relatedFiles.push('- app/Models/ - 数据模型');
-            } else if (fileName.includes('Model')) {
-                relatedFiles.push('- database/migrations/ - 数据库迁移');
-                relatedFiles.push('- app/Http/Controllers/ - 控制器');
-            }
-        } else if (projectAnalysis.project.framework.includes('React')) {
-            if (fileName.includes('Component')) {
-                relatedFiles.push('- package.json - 项目依赖');
-                relatedFiles.push('- src/index.js - 应用入口');
-                relatedFiles.push('- public/index.html - HTML模板');
-            }
-        } else if (projectAnalysis.project.framework.includes('Express')) {
-            if (fileName.includes('route')) {
-                relatedFiles.push('- app.js - 应用主文件');
-                relatedFiles.push('- package.json - 项目配置');
-                relatedFiles.push('- middleware/ - 中间件文件');
-            }
-        }
-        
-        // 通用相关文件推荐
-        if (relatedFiles.length === 0) {
-            relatedFiles.push('- package.json - 项目配置文件');
-            relatedFiles.push('- README.md - 项目说明文档');
-            relatedFiles.push('- .gitignore - Git忽略规则');
-        }
-        
-        return relatedFiles.join('\n');
-    }
-
-    /**
-     * 生成CSS内容分析（占位符）
-     */
-    analyzeCSSContent(content, analysis) {
-        // CSS分析逻辑
-        analysis.type = 'stylesheet';
-    }
-
-    /**
-     * 生成HTML内容分析（占位符）
-     */
-    analyzeHTMLContent(content, analysis) {
-        // HTML分析逻辑
-        analysis.type = 'template';
-    }
-
-    /**
-     * 通用描述生成
-     */
-    generateGenericDescription(name, type) {
-        const patterns = {
-            'class': {
-                'controller': '控制器类，处理HTTP请求和响应',
-                'model': '数据模型类，表示数据结构',
-                'service': '服务类，提供业务逻辑',
-                'helper': '辅助类，提供工具方法',
-                'widget': '小工具类，提供UI组件',
-                'admin': '管理类，处理后台功能',
-                'api': 'API类，处理接口逻辑',
-                'db|database': '数据库操作类',
-                'auth': '认证相关类',
-                'config': '配置管理类'
-            },
-            'function': {
-                'init|initialize|setup': '初始化函数',
-                'save|store|create|insert': '数据保存函数',
-                'get|fetch|load|read|retrieve': '数据获取函数',
-                'update|modify|edit|change': '数据更新函数',
-                'delete|remove|destroy': '数据删除函数',
-                'validate|check|verify': '数据验证函数',
-                'render|display|show|draw': '内容渲染函数',
-                'handle|process|execute': '业务处理函数'
-            }
-        };
-
-        const typePatterns = patterns[type] || {};
-        for (const [pattern, description] of Object.entries(typePatterns)) {
-            if (new RegExp(pattern, 'i').test(name)) {
-                return description;
-            }
-        }
-
-        return type === 'class' ? '自定义类，提供特定功能' : '自定义函数，执行特定操作';
+        return levels[level] || level;
     }
 }
 

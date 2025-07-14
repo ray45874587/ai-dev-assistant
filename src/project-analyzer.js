@@ -1,7 +1,7 @@
 /**
  * AI开发辅助系统 - 智能项目分析器
  * AI Development Assistant - Intelligent Project Analyzer
- * Version: 1.0.2
+ * Version: 1.2.0
  */
 
 const fs = require('fs');
@@ -16,7 +16,7 @@ class IntelligentProjectAnalyzer {
                 name: path.basename(this.projectPath),
                 path: this.projectPath,
                 analyzedAt: new Date().toISOString(),
-                version: '1.0.2'
+                version: '1.2.0'
             },
             project: {
                 type: 'unknown',
@@ -778,8 +778,8 @@ class IntelligentProjectAnalyzer {
         // 检查测试
         if (!this.hasTests()) {
             score -= 20;
-            issues.push('缺少测试文件');
-            suggestions.push('添加单元测试和集成测试');
+            issues.push('Missing test files');
+            suggestions.push('Add unit tests and integration tests');
         }
         
         // 检查配置文件
@@ -801,7 +801,7 @@ class IntelligentProjectAnalyzer {
         if (this.analysis.codeMetrics.complexity === 'high') {
             score -= 15;
             issues.push('代码复杂度较高');
-            suggestions.push('考虑重构大型文件和复杂函数');
+            suggestions.push('Consider refactoring large files and complex functions');
         }
         
         this.analysis.quality = {
@@ -1102,6 +1102,153 @@ class IntelligentProjectAnalyzer {
             console.error('❌ 保存分析报告失败:', error.message);
         }
     }
+
+    /**
+     * 快速项目类型检测 - 用于配置初始化
+     */
+    quickTypeDetection() {
+        try {
+            const packageJson = path.join(this.projectPath, 'package.json');
+            const composerJson = path.join(this.projectPath, 'composer.json');
+            const wpConfig = path.join(this.projectPath, 'wp-config.php');
+            
+            // 检查文件数量来判断复杂度
+            const fileCount = this.getQuickFileCount();
+            
+            if (fs.existsSync(wpConfig)) return 'wordpress';
+            if (fs.existsSync(packageJson)) {
+                const pkg = JSON.parse(fs.readFileSync(packageJson, 'utf8'));
+                if (pkg.dependencies && Object.keys(pkg.dependencies).length > 20) {
+                    return 'complex';
+                }
+                return 'node';
+            }
+            if (fs.existsSync(composerJson)) return 'php';
+            if (fileCount > 100) return 'complex';
+            
+            return 'simple';
+        } catch (error) {
+            return 'unknown';
+        }
+    }
+
+    /**
+     * 获取项目指示器 - 用于智能焦点调整
+     */
+    getProjectIndicators() {
+        const indicators = {
+            isWebProject: false,
+            isAPIProject: false,
+            hasDatabase: false,
+            hasAPI: false,
+            hasUI: false,
+            hasAutomation: false
+        };
+
+        try {
+            // 检查Web项目标识
+            const webFiles = [
+                'index.html', 'index.php', 'package.json', 
+                'composer.json', 'wp-config.php'
+            ];
+            indicators.isWebProject = webFiles.some(file => 
+                fs.existsSync(path.join(this.projectPath, file))
+            );
+
+            // 检查API项目标识
+            const apiIndicators = ['routes', 'api', 'controllers', 'endpoints'];
+            indicators.isAPIProject = apiIndicators.some(indicator => 
+                fs.existsSync(path.join(this.projectPath, indicator))
+            );
+
+            // 检查数据库相关
+            const dbFiles = [
+                'database.php', 'config/database.php', 'models',
+                'migrations', '.env'
+            ];
+            indicators.hasDatabase = dbFiles.some(file => 
+                fs.existsSync(path.join(this.projectPath, file))
+            );
+
+            // 检查UI相关
+            const uiIndicators = ['assets', 'css', 'js', 'templates', 'views'];
+            indicators.hasUI = uiIndicators.some(indicator => 
+                fs.existsSync(path.join(this.projectPath, indicator))
+            );
+
+            // 检查自动化
+            const autoFiles = ['Gruntfile.js', 'Gulpfile.js', 'webpack.config.js'];
+            indicators.hasAutomation = autoFiles.some(file => 
+                fs.existsSync(path.join(this.projectPath, file))
+            );
+
+            return indicators;
+        } catch (error) {
+            return indicators;
+        }
+    }
+
+    /**
+     * 快速文件计数
+     */
+    getQuickFileCount() {
+        try {
+            let count = 0;
+            const scanDir = (dir, depth = 0) => {
+                if (depth > 3) return; // 限制深度避免性能问题
+                
+                const files = fs.readdirSync(dir);
+                files.forEach(file => {
+                    const fullPath = path.join(dir, file);
+                    try {
+                        const stat = fs.statSync(fullPath);
+                        if (stat.isDirectory() && !this.shouldSkipDirectory(file)) {
+                            scanDir(fullPath, depth + 1);
+                        } else if (stat.isFile()) {
+                            count++;
+                        }
+                    } catch (error) {
+                        // 忽略权限错误等
+                    }
+                });
+            };
+            
+            scanDir(this.projectPath);
+            return count;
+        } catch (error) {
+            return 0;
+        }
+    }
+
+    /**
+     * 快速分析 - 轻量级项目检查
+     */
+    async quickAnalyze() {
+        try {
+            const projectType = this.detectProjectType();
+            const language = this.detectPrimaryLanguage();
+            const fileCount = this.getQuickFileCount();
+            
+            return {
+                type: projectType,
+                language: language,
+                fileCount: fileCount,
+                framework: this.detectFramework(projectType),
+                complexity: fileCount > 100 ? 'high' : fileCount > 50 ? 'medium' : 'low'
+            };
+        } catch (error) {
+            console.error('快速分析失败:', error.message);
+            return {
+                type: 'unknown',
+                language: 'unknown',
+                fileCount: 0,
+                framework: [],
+                complexity: 'unknown'
+            };
+        }
+    }
+
+    // ...existing code...
 }
 
 // 如果直接运行此文件

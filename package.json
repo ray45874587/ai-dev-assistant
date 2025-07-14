@@ -1,6 +1,6 @@
 {
   "name": "ai-dev-assistant",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "AI开发辅助系统 - 基于第一性原理的智能开发助手",
   "main": "src/ai-dev-assistant.js",
   "bin": {
@@ -26,12 +26,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-repo/ai-dev-assistant.git"
+    "url": "https://github.com/ray45874587/ai-dev-assistant.git"
   },
   "bugs": {
-    "url": "https://github.com/your-repo/ai-dev-assistant/issues"
+    "url": "https://github.com/ray45874587/ai-dev-assistant/issues"
   },
-  "homepage": "https://github.com/your-repo/ai-dev-assistant#readme",
+  "homepage": "https://github.com/ray45874587/ai-dev-assistant#readme",
   "engines": {
     "node": ">=14.0.0"
   },

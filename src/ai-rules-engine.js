@@ -1,25 +1,42 @@
 /**
  * AI开发辅助系统 - AI规则引擎
  * AI Development Assistant - AI Rules Engine
- * Version: 1.0.1
+ * Version: 1.2.0
  */
 
 const fs = require('fs');
 const path = require('path');
 
 class AIRulesEngine {
-    constructor(projectPath = '.') {
+    constructor(projectPath = '.', docsDir = null) {
         this.projectPath = path.resolve(projectPath);
-        this.configDir = path.join(this.projectPath, '.ai-dev-assistant', 'config');
-        // 使用独立的配置文件名，避免与现有项目冲突
-        this.rulesPath = path.join(this.projectPath, '.ai-dev-assistant-rules.json');
-        this.instructionsPath = path.join(this.projectPath, '.ai-dev-instructions.md');
+        this.docsDir = docsDir || path.join(this.projectPath, 'AI助手文档');
+        this.configDir = path.join(this.docsDir, '.system', 'config');
+        
+        // 规则和指令文件放在AI助手文档目录下
+        this.rulesPath = path.join(this.docsDir, '.ai-dev-assistant-rules.json');
+        this.instructionsPath = path.join(this.docsDir, '.ai-dev-instructions.md');
         
         this.rules = {};
         this.context = {};
         
+        // 确保目录存在
+        this.ensureDirectories();
+        
         this.loadRules();
         this.loadContext();
+    }
+
+    /**
+     * 确保必要目录存在
+     */
+    ensureDirectories() {
+        if (!fs.existsSync(this.docsDir)) {
+            fs.mkdirSync(this.docsDir, { recursive: true });
+        }
+        if (!fs.existsSync(this.configDir)) {
+            fs.mkdirSync(this.configDir, { recursive: true });
+        }
     }
 
     /**
@@ -65,7 +82,7 @@ class AIRulesEngine {
      */
     getDefaultRules() {
         return {
-            version: "1.0.0",
+            version: "1.2.0",
             name: "AI开发辅助系统规则集",
             description: "基于第一性原理的AI协同开发规则，确保高效、安全、可维护的代码",
             projectType: "generic",

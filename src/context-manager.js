@@ -1,7 +1,7 @@
 /**
  * AI开发辅助系统 - 上下文管理器
  * AI Development Assistant - Context Manager
- * Version: 1.0.1
+ * Version: 1.2.0
  */
 
 const fs = require('fs');
@@ -9,10 +9,11 @@ const path = require('path');
 const crypto = require('crypto');
 
 class ContextManager {
-    constructor(projectPath = '.') {
-        this.projectPath = path.resolve(projectPath);
-        this.contextDir = path.join(this.projectPath, '.ai-dev-assistant', 'context');
-        this.configDir = path.join(this.projectPath, '.ai-dev-assistant', 'config');
+    constructor(contextDir = '.', projectPath = null) {
+        this.contextDir = path.resolve(contextDir);
+        this.projectPath = projectPath ? path.resolve(projectPath) : path.dirname(this.contextDir);
+        this.configDir = path.join(this.contextDir, 'config');
+        this.dataDir = path.join(this.contextDir, 'data');
         
         // 确保目录存在
         this.ensureDirectories();
@@ -22,7 +23,7 @@ class ContextManager {
      * 确保必要目录存在
      */
     ensureDirectories() {
-        const dirs = [this.contextDir, this.configDir];
+        const dirs = [this.contextDir, this.configDir, this.dataDir];
         dirs.forEach(dir => {
             if (!fs.existsSync(dir)) {
                 fs.mkdirSync(dir, { recursive: true });
@@ -1178,6 +1179,61 @@ class ContextManager {
         fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
         
         return summary;
+    }
+
+    /**
+     * 清理临时文件和缓存
+     */
+    async cleanup() {
+        console.log('🧹 开始清理系统文件...');
+        
+        try {
+            const tempFiles = [
+                'temp-analysis.json',
+                'analysis-cache.json',
+                'temp-overview.json'
+            ];
+            
+            let cleanedCount = 0;
+            
+            // 清理临时文件
+            tempFiles.forEach(file => {
+                const filePath = path.join(this.dataDir, file);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                    cleanedCount++;
+                    console.log(`🗑️ 删除临时文件: ${file}`);
+                }
+            });
+            
+            // 清理过期的分析结果（超过7天）
+            const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+            
+            if (fs.existsSync(this.dataDir)) {
+                const files = fs.readdirSync(this.dataDir);
+                files.forEach(file => {
+                    const filePath = path.join(this.dataDir, file);
+                    const stats = fs.statSync(filePath);
+                    
+                    if (file.startsWith('analysis-') && file.endsWith('.json') && stats.mtime.getTime() < sevenDaysAgo) {
+                        fs.unlinkSync(filePath);
+                        cleanedCount++;
+                        console.log(`🗑️ 删除过期文件: ${file}`);
+                    }
+                });
+            }
+            
+            if (cleanedCount === 0) {
+                console.log('✨ 没有需要清理的文件');
+            } else {
+                console.log(`✅ 清理完成，删除了 ${cleanedCount} 个文件`);
+            }
+            
+            return { success: true, cleanedFiles: cleanedCount };
+        } catch (error) {
+            console.error('❌ 清理过程中出现错误:', error.message);
+            throw error;
+        }
     }
 }
 

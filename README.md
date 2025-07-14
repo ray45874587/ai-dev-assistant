@@ -2,7 +2,7 @@
 <img width="680" height="285" alt="image" src="https://github.com/user-attachments/assets/9d9fa0cd-10a7-42e7-b0c1-06a5ed3c5b7c" />
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-1.2.0-green.svg)](package.json)
 [![Node](https://img.shields.io/badge/node-%3E%3D14.0.0-brightgreen.svg)](package.json)
 
 > 基于第一性原理的通用AI开发助手，让AI真正理解你的项目
