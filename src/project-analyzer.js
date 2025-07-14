@@ -1,7 +1,7 @@
 /**
  * AI开发辅助系统 - 智能项目分析器
  * AI Development Assistant - Intelligent Project Analyzer
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 
 const fs = require('fs');

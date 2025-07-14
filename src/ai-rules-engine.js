@@ -1,7 +1,7 @@
 /**
  * AI开发辅助系统 - AI规则引擎
  * AI Development Assistant - AI Rules Engine
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 
 const fs = require('fs');

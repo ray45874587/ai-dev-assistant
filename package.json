@@ -1,6 +1,6 @@
 {
   "name": "ai-dev-assistant",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AI开发辅助系统 - 基于第一性原理的智能开发助手",
   "main": "src/ai-dev-assistant.js",
   "bin": {

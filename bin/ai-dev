@@ -3,7 +3,7 @@
 /**
  * AI开发辅助系统 - 命令行界面
  * AI Development Assistant - Command Line Interface
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 
 const fs = require('fs');
@@ -12,19 +12,21 @@ const AIDevAssistant = require('../src/ai-dev-assistant');
 
 // 颜色定义
 const colors = {
-    reset: '\033[0m',
-    red: '\033[31m',
-    green: '\033[32m',
-    yellow: '\033[33m',
-    blue: '\033[34m',
-    magenta: '\033[35m',
-    cyan: '\033[36m',
-    white: '\033[37m'
+    reset: '\x1b[0m',
+    red: '\x1b[31m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    blue: '\x1b[34m',
+    magenta: '\x1b[35m',
+    cyan: '\x1b[36m',
+    white: '\x1b[37m'
 };
 
 class AIDevCLI {
     constructor() {
-        this.assistant = new AIDevAssistant();
+        // 检测当前工作目录，而不是工具安装目录
+        const workingDir = process.cwd();
+        this.assistant = new AIDevAssistant(workingDir);
         this.commands = {
             'init': this.initCommand.bind(this),
             'status': this.statusCommand.bind(this),
@@ -318,10 +320,18 @@ class AIDevCLI {
             if (result.success) {
                 this.success('文档生成完成！');
                 console.log('');
+                this.info(`📁 文档目录: ${result.docsDirectory}/`);
+                console.log('');
                 this.info('生成的文档:');
                 result.files.forEach(file => {
                     console.log(`  📄 ${file}`);
                 });
+                console.log('');
+                this.info('使用说明:');
+                console.log('  - 查看文档目录获取完整项目文档');
+                console.log('  - README.md 包含项目基本信息');
+                console.log(`  - ${result.docsDirectory}/ 目录包含详细的技术文档`);
+                console.log('  - .ai-dev-instructions.md 是AI助手的指令文档');
             }
         } catch (error) {
             this.error(`文档生成失败: ${error.message}`);

@@ -1,7 +1,7 @@
 /**
  * AI开发辅助系统 - 上下文管理器
  * AI Development Assistant - Context Manager
- * Version: 1.0.0
+ * Version: 1.0.1
  */
 
 const fs = require('fs');
